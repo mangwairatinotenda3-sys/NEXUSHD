@@ -14,19 +14,25 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+
       - run: npm install
       - run: npm run build
         env:
-          VITE_SUPABASE_URL: https://zdkltejdnlqenrwyoncr.supabase.co
-          VITE_SUPABASE_ANON_KEY: sb_publishable_oHkNev_GTJ92NeiGYaMFVQ_GyMrRByr
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
