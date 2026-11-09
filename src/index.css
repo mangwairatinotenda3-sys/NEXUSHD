@@ -509,3 +509,14 @@ button.row:active {
     transform: translateY(100%);
   }
   }
+
+html,
+body,
+#root {
+  background: var(--bg);
+}
+
+#root,
+.app-shell {
+  height: 100dvh;
+}
