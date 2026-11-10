@@ -4,6 +4,7 @@ import AppLayout from './components/AppLayout.jsx';
 import Home from './pages/Home.jsx';
 import Search from './pages/Search.jsx';
 import MovieDetails from './pages/MovieDetails.jsx';
+import Library from './pages/Library.jsx';
 import Downloads from './pages/Downloads.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
@@ -15,7 +16,9 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
-          <Route path="/movie/:id" element={<MovieDetails />} />
+          <Route path="/movie/:id" element={<MovieDetails kind="movie" />} />
+          <Route path="/tv/:id" element={<MovieDetails kind="tv" />} />
+          <Route path="/library" element={<Library />} />
           <Route path="/downloads" element={<Downloads />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
