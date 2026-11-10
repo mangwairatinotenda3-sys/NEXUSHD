@@ -9,6 +9,7 @@ import {
   Star,
   Clock,
   Calendar,
+  Tv,
   X,
   User,
   WifiOff,
@@ -17,7 +18,7 @@ import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
-import { tmdb, tmdbRequest, imageUrl, useMovies } from '../services/tmdb.js';
+import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/details.css';
 
 function pickTrailer(videos = []) {
@@ -37,7 +38,7 @@ function formatRuntime(minutes) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function MovieDetails() {
+export default function MovieDetails({ kind = 'movie' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { has, toggle } = useWatchlist();
@@ -45,9 +46,10 @@ export default function MovieDetails() {
   const [expanded, setExpanded] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
+  const isTv = kind === 'tv';
 
-  const details = useMovies(() => tmdb.details(id), [id]);
-  const similar = useMovies(() => tmdbRequest(`movie/${id}/similar`), [id]);
+  const details = useMovies(() => (isTv ? tmdb.tvDetails(id) : tmdb.details(id)), [id, kind]);
+  const similar = useMovies(() => (isTv ? tmdb.tvSimilar(id) : tmdb.similar(id)), [id, kind]);
 
   const back = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
 
@@ -63,7 +65,7 @@ export default function MovieDetails() {
     document.querySelector('.app-content')?.scrollTo(0, 0);
     setExpanded(false);
     setTrailerOpen(false);
-  }, [id]);
+  }, [id, kind]);
 
   useEffect(() => {
     if (!trailerOpen) return undefined;
@@ -111,7 +113,7 @@ export default function MovieDetails() {
         <Header title="" back />
         <EmptyState
           icon={WifiOff}
-          title="Couldn't load this movie"
+          title={`Couldn't load this ${isTv ? 'series' : 'movie'}`}
           text="Check your connection and try again."
           actionLabel="Try again"
           onAction={details.reload}
@@ -120,12 +122,13 @@ export default function MovieDetails() {
     );
   }
 
-  const m = details.data;
+  const m = { ...details.data, media_type: kind };
   const trailer = pickTrailer(m.videos?.results);
   const cast = (m.credits?.cast || []).slice(0, 14);
   const year = m.release_date ? m.release_date.slice(0, 4) : '';
   const runtime = formatRuntime(m.runtime);
-  const saved = has(m.id);
+  const seasons = m.number_of_seasons || 0;
+  const saved = has(m.id, kind);
   const longText = (m.overview || '').length > 180;
   const heroImg = imageUrl(m.backdrop_path, 'w780') || imageUrl(m.poster_path, 'w500');
 
@@ -190,6 +193,12 @@ export default function MovieDetails() {
                   {runtime}
                 </span>
               )}
+              {isTv && seasons > 0 && (
+                <span>
+                  <Tv size={14} />
+                  {seasons} {seasons === 1 ? 'season' : 'seasons'}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -205,11 +214,7 @@ export default function MovieDetails() {
         )}
 
         <div className="d-actions">
-          <button
-            className="btn-primary"
-            disabled={!trailer}
-            onClick={() => setTrailerOpen(true)}
-          >
+          <button className="btn-primary" disabled={!trailer} onClick={() => setTrailerOpen(true)}>
             <Play size={18} fill="currentColor" />
             {trailer ? 'Watch Trailer' : 'No trailer available'}
           </button>
@@ -264,7 +269,7 @@ export default function MovieDetails() {
         title="More Like This"
         movies={similar.data?.results}
         loading={similar.loading}
-        onOpen={(movie) => navigate(`/movie/${movie.id}`)}
+        onOpen={(item) => navigate(`/${kind}/${item.id}`)}
       />
 
       {trailerOpen && trailer && (
@@ -290,4 +295,4 @@ export default function MovieDetails() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+    }
