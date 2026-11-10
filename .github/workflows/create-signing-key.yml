@@ -1,0 +1,31 @@
+name: Create Android signing key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate the key and save it as repository secrets
+        env:
+          GH_TOKEN: ${{ secrets.SECRETS_PAT }}
+        run: |
+          set -eu
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "Add the SECRETS_PAT secret first."
+            exit 1
+          fi
+          EXISTING=$(gh secret list --repo "$GITHUB_REPOSITORY" || true)
+          if echo "$EXISTING" | grep -q '^ANDROID_KEYSTORE_BASE64'; then
+            echo "A signing key already exists, so I did not replace it."
+            exit 1
+          fi
+          PASS=$(openssl rand -hex 24)
+          keytool -genkeypair -keystore nexushd.keystore -alias nexushd \
+            -keyalg RSA -keysize 4096 -validity 36500 \
+            -storepass "$PASS" -keypass "$PASS" -dname "CN=NexusHD"
+          base64 -w0 nexushd.keystore | gh secret set ANDROID_KEYSTORE_BASE64 --repo "$GITHUB_REPOSITORY"
+          printf '%s' "$PASS" | gh secret set ANDROID_KEYSTORE_PASSWORD --repo "$GITHUB_REPOSITORY"
+          rm -f nexushd.keystore
+          echo "Signing key created and saved. You can now delete SECRETS_PAT."
