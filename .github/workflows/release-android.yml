@@ -1,0 +1,117 @@
+name: Release Android app
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version number, for example 1.0.0
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check the version and the signing key
+        run: |
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Use a version like 1.0.0"
+            exit 1
+          fi
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
+            echo "No signing key yet. Run 'Create Android signing key' first."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm install
+
+      - name: Build the web app
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Create the Android project
+        run: npx cap add android
+
+      - name: Icons and splash screen (optional)
+        run: |
+          if [ -f assets/logo.png ]; then
+            npx --yes @capacitor/assets generate --android --iconBackgroundColor '#07040f' --splashBackgroundColor '#07040f'
+          else
+            echo "No assets/logo.png found, using the default icon."
+          fi
+
+      - name: Set permissions and app settings
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const file = 'android/app/src/main/AndroidManifest.xml';
+          let xml = fs.readFileSync(file, 'utf8');
+          const permissions = ['INTERNET', 'ACCESS_NETWORK_STATE', 'VIBRATE', 'POST_NOTIFICATIONS'];
+          for (const p of permissions) {
+            if (!xml.includes('android.permission.' + p + '"')) {
+              xml = xml.replace(
+                '</manifest>',
+                '    <uses-permission android:name="android.permission.' + p + '" />\n</manifest>'
+              );
+            }
+          }
+          if (!xml.includes('usesCleartextTraffic')) {
+            xml = xml.replace('<application', '<application android:usesCleartextTraffic="false"');
+          }
+          fs.writeFileSync(file, xml);
+          EOF
+
+      - name: Set the version
+        run: |
+          sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+
+      - name: Copy the web app into the Android project
+        run: npx cap sync android
+
+      - name: Build the release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Sign the APK
+        run: |
+          echo "$KS_B64" | base64 -d > nexushd.keystore
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/zipalign" -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          "$BT/apksigner" sign --ks nexushd.keystore --ks-key-alias nexushd --ks-pass env:KS_PASS --key-pass env:KS_PASS --out "NexusHD-$VERSION.apk" aligned.apk
+          "$BT/apksigner" verify "NexusHD-$VERSION.apk"
+          sha256sum "NexusHD-$VERSION.apk" > "NexusHD-$VERSION.apk.sha256"
+          rm -f nexushd.keystore aligned.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: NexusHD ${{ inputs.version }}
+          generate_release_notes: true
+          make_latest: true
+          files: |
+            NexusHD-${{ inputs.version }}.apk
+            NexusHD-${{ inputs.version }}.apk.sha256
