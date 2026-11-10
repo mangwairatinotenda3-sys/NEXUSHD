@@ -4,6 +4,7 @@ import { Search, Play, Flame, WifiOff } from 'lucide-react';
 import BrandMark from '../components/BrandMark.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
+import useHistory, { recordView } from '../hooks/useHistory.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/home.css';
 
@@ -87,6 +88,7 @@ function Hero({ movies, genreMap, onOpen }) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const history = useHistory();
   const [genreId, setGenreId] = useState(null);
 
   const trending = useMovies(() => tmdb.trending());
@@ -110,6 +112,10 @@ export default function Home() {
   const failed = trending.error && popular.error && topRated.error;
 
   const open = (item) => navigate(`/${item.media_type === 'tv' ? 'tv' : 'movie'}/${item.id}`);
+  const openHero = (item) => {
+    recordView(item);
+    open(item);
+  };
   const retry = () => {
     trending.reload();
     popular.reload();
@@ -147,7 +153,7 @@ export default function Home() {
           {trending.loading ? (
             <div className="skeleton hero-sk" />
           ) : heroMovies.length > 0 ? (
-            <Hero movies={heroMovies} genreMap={genreMap} onOpen={open} />
+            <Hero movies={heroMovies} genreMap={genreMap} onOpen={openHero} />
           ) : null}
 
           <div className="chips" role="list">
@@ -166,6 +172,17 @@ export default function Home() {
                   </button>
                 ))}
           </div>
+
+          {history.items.length > 0 && (
+            <MovieRow
+              title="Recently Viewed"
+              movies={history.items}
+              loading={false}
+              onOpen={open}
+              actionLabel="Clear"
+              onAction={history.clear}
+            />
+          )}
 
           {genreId && (
             <MovieRow
@@ -216,4 +233,4 @@ export default function Home() {
       )}
     </div>
   );
-                            }
+  }
