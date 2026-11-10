@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Play, Flame, WifiOff } from 'lucide-react';
+import { Search, Play, Flame, WifiOff, Film, ChevronRight } from 'lucide-react';
 import BrandMark from '../components/BrandMark.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import useHistory, { recordView } from '../hooks/useHistory.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/home.css';
+import '../styles/free.css';
 
 function Hero({ movies, genreMap, onOpen }) {
   const [index, setIndex] = useState(0);
@@ -173,6 +174,17 @@ export default function Home() {
                 ))}
           </div>
 
+          <button className="free-promo" onClick={() => navigate('/free')}>
+            <span className="free-promo-icon">
+              <Film size={24} />
+            </span>
+            <span className="free-promo-text">
+              <strong>Free Films</strong>
+              <span>Classic movies you can watch right here</span>
+            </span>
+            <ChevronRight size={20} style={{ color: 'var(--text-muted)' }} />
+          </button>
+
           {history.items.length > 0 && (
             <MovieRow
               title="Recently Viewed"
@@ -233,4 +245,4 @@ export default function Home() {
       )}
     </div>
   );
-  }
+              }
