@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronLeft,
+  ChevronRight,
   Play,
   Bookmark,
   BookmarkCheck,
@@ -17,9 +18,14 @@ import {
 import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
+import VideoPlayer from '../components/VideoPlayer.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
+import useLocalStorage from '../hooks/useLocalStorage.js';
+import useDownloads, { getPlayableUrl } from '../services/downloadManager.js';
+import { FREE_FILMS, archivePage, loadFilm, searchFreeFilms } from '../services/archive.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/details.css';
+import '../styles/free.css';
 
 function pickTrailer(videos = []) {
   const yt = videos.filter((v) => v.site === 'YouTube');
@@ -38,11 +44,52 @@ function formatRuntime(minutes) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
+const normalize = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const stripYear = (s) => s.replace(/\s\d{4}$/, '');
+
+/* Looks for a free, public-domain copy of this exact movie (same title and
+   release year). Returns a film with a playable address, or null. */
+async function findFreeFilm(title, year) {
+  try {
+    const wanted = normalize(title);
+    if (!wanted) return null;
+
+    const curated = FREE_FILMS.find(
+      (f) => normalize(f.title) === wanted && (!year || f.year === year)
+    );
+    let entry = curated || null;
+
+    if (!entry && year) {
+      const { films } = await searchFreeFilms({ term: title, rows: 24 });
+      entry =
+        films.find((f) => {
+          const t = normalize(f.title);
+          return (t === wanted || stripYear(t) === wanted) && f.year === year;
+        }) || null;
+    }
+    if (!entry) return null;
+
+    const film = await loadFilm(entry);
+    return film.src ? film : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function MovieDetails({ kind = 'movie' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { has, toggle } = useWatchlist();
+  const { items: downloads } = useDownloads();
+  const [progress, setProgress] = useLocalStorage('nexushd:free-progress', {});
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [freePlayer, setFreePlayer] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
@@ -50,6 +97,13 @@ export default function MovieDetails({ kind = 'movie' }) {
 
   const details = useMovies(() => (isTv ? tmdb.tvDetails(id) : tmdb.details(id)), [id, kind]);
   const similar = useMovies(() => (isTv ? tmdb.tvSimilar(id) : tmdb.similar(id)), [id, kind]);
+
+  const dTitle = details.data?.title;
+  const dYear = details.data?.release_date ? Number(details.data.release_date.slice(0, 4)) : 0;
+  const free = useMovies(
+    () => (!isTv && dTitle ? findFreeFilm(dTitle, dYear) : Promise.resolve(null)),
+    [dTitle, dYear, isTv]
+  );
 
   const back = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
 
@@ -65,6 +119,7 @@ export default function MovieDetails({ kind = 'movie' }) {
     document.querySelector('.app-content')?.scrollTo(0, 0);
     setExpanded(false);
     setTrailerOpen(false);
+    setFreePlayer(null);
   }, [id, kind]);
 
   useEffect(() => {
@@ -73,6 +128,28 @@ export default function MovieDetails({ kind = 'movie' }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [trailerOpen]);
+
+  const playFree = async () => {
+    const film = free.data;
+    if (!film) return;
+    const rec = downloads.find((d) => d.id === film.id);
+    if (rec && rec.status === 'completed') {
+      setFreePlayer({ film, src: null, loading: true, offline: true });
+      try {
+        const url = await getPlayableUrl(film.id);
+        setFreePlayer({ film, src: url, loading: false, offline: true });
+      } catch {
+        setFreePlayer({ film, src: null, loading: false, offline: true });
+      }
+    } else {
+      setFreePlayer({ film, src: film.src, loading: false, offline: false });
+    }
+  };
+
+  const closeFree = () => {
+    if (freePlayer?.offline && freePlayer.src) URL.revokeObjectURL(freePlayer.src);
+    setFreePlayer(null);
+  };
 
   if (details.loading) {
     return (
@@ -131,6 +208,7 @@ export default function MovieDetails({ kind = 'movie' }) {
   const saved = has(m.id, kind);
   const longText = (m.overview || '').length > 180;
   const heroImg = imageUrl(m.backdrop_path, 'w780') || imageUrl(m.poster_path, 'w500');
+  const freeFilm = free.data;
 
   const onToggleSave = () => {
     const added = toggle(m);
@@ -213,6 +291,23 @@ export default function MovieDetails({ kind = 'movie' }) {
           </div>
         )}
 
+        {freeFilm && (
+          <button
+            className="free-promo"
+            style={{ width: '100%', margin: '18px 0 0' }}
+            onClick={playFree}
+          >
+            <span className="free-promo-icon">
+              <Play size={22} fill="currentColor" />
+            </span>
+            <span className="free-promo-text">
+              <strong>Watch the full film free</strong>
+              <span>Public domain · hosted by the Internet Archive</span>
+            </span>
+            <ChevronRight size={20} style={{ color: 'var(--text-muted)' }} />
+          </button>
+        )}
+
         <div className="d-actions">
           <button className="btn-primary" disabled={!trailer} onClick={() => setTrailerOpen(true)}>
             <Play size={18} fill="currentColor" />
@@ -292,7 +387,19 @@ export default function MovieDetails({ kind = 'movie' }) {
         </div>
       )}
 
+      {freePlayer && (
+        <VideoPlayer
+          title={freePlayer.film.title}
+          src={freePlayer.src}
+          loading={freePlayer.loading}
+          startAt={progress[freePlayer.film.id] || 0}
+          fallbackHref={archivePage(freePlayer.film.id)}
+          onClose={closeFree}
+          onProgress={(s) => setProgress((prev) => ({ ...prev, [freePlayer.film.id]: s }))}
+        />
+      )}
+
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-    }
+  }
