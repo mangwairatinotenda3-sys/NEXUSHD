@@ -1,0 +1,89 @@
+name: Build Android app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm install
+
+      - name: Build the web app
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Create the Android project
+        run: npx cap add android
+
+      - name: Icons and splash screen (optional)
+        run: |
+          if [ -f assets/logo.png ]; then
+            npx --yes @capacitor/assets generate --android --iconBackgroundColor '#07040f' --splashBackgroundColor '#07040f'
+          else
+            echo "No assets/logo.png found, using the default icon."
+          fi
+
+      - name: Set permissions and app settings
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const file = 'android/app/src/main/AndroidManifest.xml';
+          let xml = fs.readFileSync(file, 'utf8');
+          const permissions = ['INTERNET', 'ACCESS_NETWORK_STATE', 'VIBRATE', 'POST_NOTIFICATIONS'];
+          for (const p of permissions) {
+            if (!xml.includes('android.permission.' + p + '"')) {
+              xml = xml.replace(
+                '</manifest>',
+                '    <uses-permission android:name="android.permission.' + p + '" />\n</manifest>'
+              );
+            }
+          }
+          if (!xml.includes('usesCleartextTraffic')) {
+            xml = xml.replace('<application', '<application android:usesCleartextTraffic="false"');
+          }
+          fs.writeFileSync(file, xml);
+          console.log(xml);
+          EOF
+
+      - name: Copy the web app into the Android project
+        run: npx cap sync android
+
+      - name: Build the APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk NexusHD-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NexusHD-debug-apk
+          path: NexusHD-debug.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: NexusHD Android (latest build)
+          body: Test build of the NexusHD Android app. Download NexusHD-debug.apk below and install it.
+          prerelease: true
+          files: NexusHD-debug.apk
