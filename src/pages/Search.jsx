@@ -12,10 +12,49 @@ import {
 import EmptyState from '../components/EmptyState.jsx';
 import { MovieCard } from '../components/MovieRow.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
-import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
+import { recordView } from '../hooks/useHistory.js';
+import { tmdb, tmdbRequest, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/details.css';
 
 const MAX_RECENT = 8;
+
+const TYPES = [
+  { id: 'all', label: 'All' },
+  { id: 'movie', label: 'Movies' },
+  { id: 'tv', label: 'Series' },
+];
+
+function normalize(r) {
+  if (r.media_type !== 'tv') return r;
+  return {
+    ...r,
+    title: r.name || r.original_name || 'Untitled',
+    release_date: r.first_air_date || '',
+  };
+}
+
+async function searchTitles(term, page) {
+  const data = await tmdbRequest('search/multi', { query: term, page });
+  const results = (data.results || [])
+    .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
+    .map(normalize);
+  return { results, totalPages: data.total_pages || 1 };
+}
+
+const pathOf = (m) => `/${m.media_type === 'tv' ? 'tv' : 'movie'}/${m.id}`;
+
+function SkeletonGrid({ count }) {
+  return (
+    <div className="grid">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i}>
+          <div className="poster-sk skeleton" />
+          <div className="line-sk skeleton" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Search() {
   const navigate = useNavigate();
@@ -25,6 +64,7 @@ export default function Search() {
 
   const [query, setQuery] = useState('');
   const [term, setTerm] = useState('');
+  const [type, setType] = useState('all');
   const [retry, setRetry] = useState(0);
   const [results, setResults] = useState([]);
   const [page, setPage] = useState(1);
@@ -60,13 +100,12 @@ export default function Search() {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    tmdb
-      .search(term, 1)
+    searchTitles(term, 1)
       .then((data) => {
         if (cancelled) return;
-        setResults(data.results || []);
+        setResults(data.results);
         setPage(1);
-        setTotalPages(data.total_pages || 1);
+        setTotalPages(data.totalPages);
         setLoading(false);
       })
       .catch(() => {
@@ -83,19 +122,21 @@ export default function Search() {
     if (loadingMore || loading || page >= totalPages || !term) return;
     const forTerm = term;
     setLoadingMore(true);
-    tmdb
-      .search(forTerm, page + 1)
+    searchTitles(forTerm, page + 1)
       .then((data) => {
         if (termRef.current !== forTerm) return;
         setResults((prev) => {
-          const seen = new Set(prev.map((m) => m.id));
-          return [...prev, ...(data.results || []).filter((m) => !seen.has(m.id))];
+          const seen = new Set(prev.map((m) => `${m.media_type}-${m.id}`));
+          return [...prev, ...data.results.filter((m) => !seen.has(`${m.media_type}-${m.id}`))];
         });
         setPage((p) => p + 1);
       })
       .catch(() => {})
       .finally(() => setLoadingMore(false));
   }, [loadingMore, loading, page, totalPages, term]);
+
+  const visible = results.filter((m) => type === 'all' || m.media_type === type);
+  const hasMore = page < totalPages;
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -106,7 +147,7 @@ export default function Search() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore, results.length]);
+  }, [loadMore, results.length, type]);
 
   const saveRecent = (t) => {
     if (!t) return;
@@ -119,7 +160,8 @@ export default function Search() {
 
   const openMovie = (movie) => {
     saveRecent(term);
-    navigate(`/movie/${movie.id}`);
+    recordView(movie);
+    navigate(pathOf(movie));
   };
 
   const submit = (e) => {
@@ -147,7 +189,7 @@ export default function Search() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search movies"
+            placeholder="Search movies and series"
             enterKeyHint="search"
             autoComplete="off"
             autoCorrect="off"
@@ -167,6 +209,22 @@ export default function Search() {
           )}
         </label>
       </form>
+
+      {!idle && (
+        <div className="lib-chips" role="tablist">
+          {TYPES.map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={type === t.id}
+              className={`lib-chip ${type === t.id ? 'on' : ''}`}
+              onClick={() => setType(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {idle ? (
         <>
@@ -241,14 +299,7 @@ export default function Search() {
           </div>
         </>
       ) : loading || pending ? (
-        <div className="grid">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i}>
-              <div className="poster-sk skeleton" />
-              <div className="line-sk skeleton" />
-            </div>
-          ))}
-        </div>
+        <SkeletonGrid count={9} />
       ) : error ? (
         <EmptyState
           icon={WifiOff}
@@ -257,32 +308,29 @@ export default function Search() {
           actionLabel="Try again"
           onAction={() => setRetry((n) => n + 1)}
         />
-      ) : results.length === 0 ? (
+      ) : visible.length === 0 && !hasMore ? (
         <EmptyState
           icon={SearchX}
           title="No results"
-          text={`We couldn't find anything for "${term}". Try a different title.`}
+          text={
+            type === 'all'
+              ? `We couldn't find anything for "${term}". Try a different title.`
+              : `No ${type === 'tv' ? 'series' : 'movies'} found for "${term}". Try another filter.`
+          }
         />
       ) : (
         <>
-          <div className="grid">
-            {results.map((m) => (
-              <MovieCard key={m.id} movie={m} onOpen={openMovie} />
-            ))}
-          </div>
-          {page < totalPages && <div ref={sentinelRef} className="sentinel" />}
-          {loadingMore && (
+          {visible.length > 0 && (
             <div className="grid">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i}>
-                  <div className="poster-sk skeleton" />
-                  <div className="line-sk skeleton" />
-                </div>
+              {visible.map((m) => (
+                <MovieCard key={`${m.media_type}-${m.id}`} movie={m} onOpen={openMovie} />
               ))}
             </div>
           )}
+          {hasMore && <div ref={sentinelRef} className="sentinel" />}
+          {(loadingMore || (visible.length === 0 && hasMore)) && <SkeletonGrid count={3} />}
         </>
       )}
     </div>
   );
-}
+  }
