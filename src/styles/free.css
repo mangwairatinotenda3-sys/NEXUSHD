@@ -268,3 +268,68 @@
 .player-error .btn-secondary {
   color: #fff;
   }
+
+.free-heading {
+  margin: 22px 20px 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.free-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 20px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  font-size: 14px;
+}
+
+.free-error span {
+  flex: 1;
+}
+
+.film-dl {
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  border: 1px solid var(--card-border);
+}
+
+.film-dl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.film-dl-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-bright);
+}
+
+.film-dl-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.film-dl-actions .btn-secondary {
+  flex: 1;
+  min-height: 44px;
+}
+
+.sheet-list .sheet-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 8px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+    }
