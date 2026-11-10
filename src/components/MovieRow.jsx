@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight, Film, Star } from 'lucide-react';
 import { imageUrl } from '../services/tmdb.js';
+import { recordView } from '../hooks/useHistory.js';
 
 export function MovieCard({ movie, onOpen }) {
   const [loaded, setLoaded] = useState(false);
@@ -8,7 +9,13 @@ export function MovieCard({ movie, onOpen }) {
   const year = movie.release_date ? movie.release_date.slice(0, 4) : '';
 
   return (
-    <button className="movie-card" onClick={() => onOpen?.(movie)}>
+    <button
+      className="movie-card"
+      onClick={() => {
+        recordView(movie);
+        onOpen?.(movie);
+      }}
+    >
       <div className="poster">
         {src ? (
           <img
@@ -29,6 +36,20 @@ export function MovieCard({ movie, onOpen }) {
             {movie.vote_average.toFixed(1)}
           </span>
         )}
+        {movie.media_type === 'tv' && (
+          <span
+            className="lib-type"
+            style={{
+              position: 'absolute',
+              bottom: 6,
+              left: 6,
+              background: 'rgba(0,0,0,0.65)',
+              color: '#fff',
+            }}
+          >
+            Series
+          </span>
+        )}
       </div>
       <div className="movie-title">{movie.title}</div>
       {year && <div className="movie-year">{year}</div>}
@@ -36,7 +57,15 @@ export function MovieCard({ movie, onOpen }) {
   );
 }
 
-export default function MovieRow({ title, movies, loading, onOpen, onSeeAll }) {
+export default function MovieRow({
+  title,
+  movies,
+  loading,
+  onOpen,
+  onSeeAll,
+  actionLabel,
+  onAction,
+}) {
   if (!loading && (!movies || movies.length === 0)) return null;
 
   return (
@@ -48,6 +77,11 @@ export default function MovieRow({ title, movies, loading, onOpen, onSeeAll }) {
             See All <ChevronRight size={16} />
           </button>
         )}
+        {!onSeeAll && onAction && (
+          <button className="see-all" onClick={onAction}>
+            {actionLabel}
+          </button>
+        )}
       </div>
       <div className="rail">
         {loading
@@ -57,8 +91,10 @@ export default function MovieRow({ title, movies, loading, onOpen, onSeeAll }) {
                 <div className="line-sk skeleton" />
               </div>
             ))
-          : movies.map((m) => <MovieCard key={m.id} movie={m} onOpen={onOpen} />)}
+          : movies.map((m) => (
+              <MovieCard key={`${m.media_type || 'movie'}-${m.id}`} movie={m} onOpen={onOpen} />
+            ))}
       </div>
     </section>
   );
-  }
+              }
