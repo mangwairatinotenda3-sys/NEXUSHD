@@ -1,7 +1,9 @@
-/* Free Films: a hand-picked list of films hosted on the Internet Archive.
-   Only add a film after opening its archive.org page and confirming it is
-   public domain or openly licensed for the countries you serve. The id is
-   the last part of the page address: archive.org/details/<id> */
+/* Free Films: films hosted on the Internet Archive.
+   - FREE_FILMS is a hand-picked list. Only add a film after opening its
+     archive.org page and confirming it is public domain or openly licensed.
+     The id is the last part of the address: archive.org/details/<id>
+   - searchFreeFilms() browses more titles, but only ones the uploader has
+     tagged with a Public Domain or CC0 licence. */
 
 export const FREE_FILMS = [
   {
@@ -15,6 +17,31 @@ export const FREE_FILMS = [
     title: 'The General',
     year: 1926,
     rights: 'Public domain in the United States (published in 1926)',
+  },
+  {
+    id: 'HisGirlFriday-1940',
+    title: 'His Girl Friday',
+    year: 1940,
+    rights: 'Public domain in the United States (copyright not renewed)',
+  },
+  {
+    id: 'plan-9-from-outer-space',
+    title: 'Plan 9 from Outer Space',
+    year: 1959,
+    rights: 'Marked CC0 (public domain dedication) on the Internet Archive',
+  },
+  {
+    id: 'CarnivalOfSoulsVideoQualityUpgrade',
+    title: 'Carnival of Souls',
+    year: 1962,
+    rights: 'Public domain in the United States only (released without a copyright notice)',
+  },
+  {
+    id: 'Charade19631280x696',
+    title: 'Charade',
+    year: 1963,
+    rights:
+      'Public domain in the United States (defective copyright notice); the music score may still be protected',
   },
   {
     id: 'Night.Of.The.Living.Dead_1080p',
@@ -65,7 +92,7 @@ export function pickVideo(files = []) {
   return mp4[0] || null;
 }
 
-const first = (v) => (Array.isArray(v) ? v[0] : v);
+const firstValue = (v) => (Array.isArray(v) ? v[0] : v);
 
 export async function loadFilm(entry) {
   if (cache.has(entry.id)) return cache.get(entry.id);
@@ -82,8 +109,8 @@ export async function loadFilm(entry) {
   const film = {
     ...entry,
     description: stripHtml(description).slice(0, 700),
-    creator: first(m.creator) || '',
-    licenseUrl: first(m.licenseurl) || '',
+    creator: firstValue(m.creator) || entry.creator || '',
+    licenseUrl: firstValue(m.licenseurl) || '',
     seconds: file?.length ? Math.round(Number(file.length)) : 0,
     sizeBytes: file ? Number(file.size) : 0,
     src: file ? fileUrl(entry.id, file.name) : null,
@@ -91,3 +118,63 @@ export async function loadFilm(entry) {
   cache.set(entry.id, film);
   return film;
 }
+
+const SORTS = {
+  popular: 'downloads desc',
+  newest: 'date desc',
+  title: 'titleSorter asc',
+};
+
+const hasPublicDomainTag = (value) =>
+  (Array.isArray(value) ? value : [value]).some(
+    (v) => typeof v === 'string' && v.toLowerCase().includes('publicdomain')
+  );
+
+/* Finds more films. Only items tagged Public Domain or CC0 are returned. */
+export async function searchFreeFilms({ term = '', sort = 'popular', page = 1, rows = 24 } = {}) {
+  const words = term
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const parts = [
+    'mediatype:movies',
+    'collection:feature_films',
+    'licenseurl:(*publicdomain*)',
+  ];
+  if (words.length) parts.push(`title:(${words.map((w) => `${w}*`).join(' AND ')})`);
+  parts.push('NOT subject:(adult OR erotic OR xxx)');
+
+  const params = new URLSearchParams();
+  params.set('q', parts.join(' AND '));
+  ['identifier', 'title', 'year', 'date', 'creator', 'licenseurl'].forEach((f) =>
+    params.append('fl[]', f)
+  );
+  params.append('sort[]', SORTS[sort] || SORTS.popular);
+  params.set('rows', String(rows));
+  params.set('page', String(page));
+  params.set('output', 'json');
+
+  const res = await fetch(`https://archive.org/advancedsearch.php?${params}`);
+  if (!res.ok) throw new Error('Search failed');
+  const data = await res.json();
+  const docs = data.response?.docs || [];
+  const total = data.response?.numFound || 0;
+
+  const films = docs
+    .filter((d) => hasPublicDomainTag(d.licenseurl))
+    .map((d) => {
+      const date = firstValue(d.date) || firstValue(d.year) || '';
+      return {
+        id: d.identifier,
+        title: String(firstValue(d.title) || d.identifier),
+        year: parseInt(date, 10) || null,
+        creator: firstValue(d.creator) || '',
+        rights: 'Tagged as public domain or CC0 by the uploader on the Internet Archive',
+        discovered: true,
+      };
+    });
+
+  return { films, hasMore: page * rows < total };
+                           }
