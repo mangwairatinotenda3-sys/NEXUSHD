@@ -1,0 +1,20 @@
+{
+  "appId": "com.nexushd.app",
+  "appName": "NexusHD",
+  "webDir": "dist",
+  "backgroundColor": "#07040f",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#07040f",
+      "showSpinner": false
+    }
+  }
+}
