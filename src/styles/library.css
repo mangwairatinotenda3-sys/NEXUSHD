@@ -1,0 +1,273 @@
+.lib-chips {
+  display: flex;
+  gap: 10px;
+  padding: 6px 20px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lib-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.lib-chip {
+  flex-shrink: 0;
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.lib-chip:active {
+  transform: scale(0.95);
+}
+
+.lib-chip.on {
+  background: linear-gradient(135deg, #7a2cf5, #5a14e0);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(109, 28, 240, 0.4);
+}
+
+.lib-count {
+  padding: 0 20px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.lib-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--primary-soft);
+  border: 1px solid var(--card-border);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.lib-banner button {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.lib-card {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  min-height: 108px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  overflow: hidden;
+  animation: lib-in 0.35s ease both;
+}
+
+@keyframes lib-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.lib-thumb,
+.lib-thumb-sk {
+  position: relative;
+  flex: 0 0 112px;
+  background: var(--skeleton-a);
+}
+
+.lib-thumb-sk {
+  border-radius: 0;
+}
+
+.lib-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.lib-thumb img.loaded {
+  opacity: 1;
+}
+
+.lib-thumb .poster-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.lib-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.lib-title {
+  max-width: 100%;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.lib-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lib-rating svg {
+  color: #fbbf24;
+}
+
+.lib-type {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-bright);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lib-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-bright);
+}
+
+.lib-status .check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-bright);
+  color: #fff;
+}
+
+.lib-play {
+  align-self: center;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(109, 28, 240, 0.28);
+  color: var(--text);
+  transition: transform 0.15s, background 0.2s;
+}
+
+.lib-play svg {
+  margin-left: 2px;
+}
+
+.lib-play:active {
+  transform: scale(0.92);
+  background: rgba(109, 28, 240, 0.5);
+}
+
+.lib-more {
+  align-self: center;
+  flex-shrink: 0;
+  margin-right: 4px;
+  color: var(--text);
+}
+
+.lib-sk-card {
+  animation: none;
+}
+
+/* ---------- Option sheets ---------- */
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+  margin: 8px -8px 4px;
+}
+
+.sheet-list button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 8px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.sheet-list button:active {
+  background: var(--primary-soft);
+}
+
+.sheet-list button:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.sheet-list .sep {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--card-border);
+}
+
+.sheet-list .danger-text {
+  color: var(--danger);
+}
+
+.sheet-list .tick {
+  margin-left: auto;
+  color: var(--primary-bright);
+}
+
+.toast .undo {
+  margin-left: 16px;
+  color: var(--primary-bright);
+  font-weight: 700;
+}
