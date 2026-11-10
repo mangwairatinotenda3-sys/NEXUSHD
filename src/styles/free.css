@@ -1,0 +1,270 @@
+/* ---------- Home promo card ---------- */
+.free-promo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: calc(100% - 32px);
+  margin: 18px 16px 0;
+  padding: 16px;
+  border-radius: 20px;
+  text-align: left;
+  background: linear-gradient(135deg, rgba(122, 44, 245, 0.35), rgba(90, 20, 224, 0.1));
+  border: 1px solid var(--card-border);
+  transition: transform 0.15s;
+}
+
+.free-promo:active {
+  transform: scale(0.98);
+}
+
+.free-promo-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #fff;
+}
+
+.free-promo-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.free-promo-text strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.free-promo-text span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ---------- Free Films page ---------- */
+.free-note {
+  display: flex;
+  gap: 10px;
+  margin: 0 20px 18px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.free-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 14px;
+  padding: 0 20px;
+}
+
+.free-card {
+  display: block;
+  text-align: left;
+  transition: transform 0.15s;
+  animation: free-in 0.35s ease both;
+}
+
+.free-card:active {
+  transform: scale(0.97);
+}
+
+@keyframes free-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.free-thumb,
+.free-thumb-sk {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.free-thumb {
+  background: var(--skeleton-a);
+  border: 1px solid var(--card-border);
+}
+
+.free-thumb img,
+.film-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.free-thumb img.loaded,
+.film-poster img.loaded {
+  opacity: 1;
+}
+
+.free-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.free-title {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.free-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- Film sheet ---------- */
+.film-sheet {
+  max-height: 88%;
+  overflow-y: auto;
+}
+
+.film-head {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.film-poster {
+  flex: 0 0 96px;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--skeleton-a);
+  border: 1px solid var(--card-border);
+}
+
+.film-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.film-info h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.film-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.film-desc.clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.film-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.film-actions .btn-primary,
+.film-actions .btn-secondary {
+  width: 100%;
+}
+
+.film-rights {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---------- Player ---------- */
+.player {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  animation: fade 0.2s ease both;
+}
+
+.player video {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+
+.player-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--safe-top) + 8px) 12px 28px;
+  background: linear-gradient(rgba(0, 0, 0, 0.7), transparent);
+  color: #fff;
+  pointer-events: none;
+}
+
+.player-top .icon-btn {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.player-title {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+}
+
+.player-error p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.player-error .btn-secondary {
+  color: #fff;
+  }
