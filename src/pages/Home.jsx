@@ -93,6 +93,8 @@ export default function Home() {
   const popular = useMovies(() => tmdb.popular());
   const topRated = useMovies(() => tmdb.topRated());
   const upcoming = useMovies(() => tmdb.upcoming());
+  const tvPopular = useMovies(() => tmdb.tvPopular());
+  const tvTopRated = useMovies(() => tmdb.tvTopRated());
   const genres = useMovies(() => tmdb.genres());
   const byGenre = useMovies(
     () => (genreId ? tmdb.byGenre(genreId) : Promise.resolve(null)),
@@ -107,12 +109,14 @@ export default function Home() {
   const heroMovies = (trending.data?.results || []).filter((m) => m.backdrop_path).slice(0, 5);
   const failed = trending.error && popular.error && topRated.error;
 
-  const open = (movie) => navigate(`/movie/${movie.id}`);
+  const open = (item) => navigate(`/${item.media_type === 'tv' ? 'tv' : 'movie'}/${item.id}`);
   const retry = () => {
     trending.reload();
     popular.reload();
     topRated.reload();
     upcoming.reload();
+    tvPopular.reload();
+    tvTopRated.reload();
     genres.reload();
   };
 
@@ -185,9 +189,21 @@ export default function Home() {
             onOpen={open}
           />
           <MovieRow
+            title="Popular Series"
+            movies={tvPopular.data?.results}
+            loading={tvPopular.loading}
+            onOpen={open}
+          />
+          <MovieRow
             title="Top Rated"
             movies={topRated.data?.results}
             loading={topRated.loading}
+            onOpen={open}
+          />
+          <MovieRow
+            title="Top Rated Series"
+            movies={tvTopRated.data?.results}
+            loading={tvTopRated.loading}
             onOpen={open}
           />
           <MovieRow
@@ -200,4 +216,4 @@ export default function Home() {
       )}
     </div>
   );
-      }
+                            }
