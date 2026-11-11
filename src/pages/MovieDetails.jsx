@@ -11,7 +11,6 @@ import {
   Clock,
   Calendar,
   Tv,
-  X,
   User,
   WifiOff,
 } from 'lucide-react';
@@ -19,6 +18,7 @@ import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
+import TrailerPlayer from '../components/TrailerPlayer.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import useDownloads, { getPlayableUrl } from '../services/downloadManager.js';
@@ -121,13 +121,6 @@ export default function MovieDetails({ kind = 'movie' }) {
     setTrailerOpen(false);
     setFreePlayer(null);
   }, [id, kind]);
-
-  useEffect(() => {
-    if (!trailerOpen) return undefined;
-    const onKey = (e) => e.key === 'Escape' && setTrailerOpen(false);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [trailerOpen]);
 
   const playFree = async () => {
     const film = free.data;
@@ -368,23 +361,11 @@ export default function MovieDetails({ kind = 'movie' }) {
       />
 
       {trailerOpen && trailer && (
-        <div className="trailer-modal" onClick={() => setTrailerOpen(false)}>
-          <button
-            className="icon-btn trailer-close"
-            onClick={() => setTrailerOpen(false)}
-            aria-label="Close trailer"
-          >
-            <X size={24} />
-          </button>
-          <div className="trailer-frame" onClick={(e) => e.stopPropagation()}>
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${trailer.key}?autoplay=1&playsinline=1&rel=0&modestbranding=1`}
-              title={`${m.title} trailer`}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
-            />
-          </div>
-        </div>
+        <TrailerPlayer
+          videoId={trailer.key}
+          title={m.title}
+          onClose={() => setTrailerOpen(false)}
+        />
       )}
 
       {freePlayer && (
@@ -402,4 +383,4 @@ export default function MovieDetails({ kind = 'movie' }) {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-  }
+    }
