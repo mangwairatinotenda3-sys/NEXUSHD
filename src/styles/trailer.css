@@ -22,6 +22,7 @@
   width: min(100%, 800px, calc((100dvh - 190px) * 16 / 9));
   aspect-ratio: 16 / 9;
   background: #000;
+  overflow: hidden;
 }
 
 .trailer-sk {
@@ -35,6 +36,7 @@
   inset: 0;
   opacity: 0;
   transition: opacity 0.3s;
+  pointer-events: none;
 }
 
 .yt-wrap.ready {
@@ -46,6 +48,116 @@
   width: 100%;
   height: 100%;
   border: 0;
+  pointer-events: none;
+}
+
+/* Our own layer on top of the video: hides YouTube's loading, paused and end screens */
+.trailer-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+.trailer-cover.covered {
+  background: #07040f;
+}
+
+.trailer-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: trailer-fade 0.35s ease both;
+}
+
+.trailer-poster.dim {
+  filter: brightness(0.42);
+}
+
+.trailer-cover.covered::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(7, 4, 15, 0.55), rgba(7, 4, 15, 0.1) 60%);
+}
+
+.trailer-bigplay {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 10px 34px rgba(109, 28, 240, 0.6);
+  animation: trailer-pop 0.25s ease both;
+}
+
+.trailer-cover:active .trailer-bigplay {
+  transform: scale(0.94);
+}
+
+.trailer-spinner {
+  position: relative;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: trailer-spin 0.8s linear infinite;
+}
+
+.trailer-spinner.small {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-width: 3px;
+}
+
+/* Fades the top strip while YouTube may show its title bar */
+.trailer-intro-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 26%;
+  background: linear-gradient(to bottom, #000 35%, rgba(0, 0, 0, 0));
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.trailer-intro-mask.on {
+  opacity: 1;
+  transition: opacity 0.1s ease;
+}
+
+@keyframes trailer-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes trailer-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes trailer-spin {
+  to { transform: rotate(360deg); }
 }
 
 .trailer-error {
@@ -178,4 +290,4 @@
   text-align: center;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
-}
+  }
