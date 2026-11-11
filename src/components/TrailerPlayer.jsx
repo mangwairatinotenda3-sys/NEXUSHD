@@ -44,6 +44,10 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [status, setStatus] = useState('loading');
+  const [started, setStarted] = useState(false);
+  const [stalled, setStalled] = useState(false);
+  const [intro, setIntro] = useState(false);
+  const [poster, setPoster] = useState(`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`);
   const [muted, setMuted] = useState(false);
   const [seeking, setSeeking] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -54,6 +58,10 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
   // Create the player
   useEffect(() => {
     let cancelled = false;
+    setStarted(false);
+    setStalled(false);
+    setStatus('loading');
+    setPoster(`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`);
     loadYouTubeApi()
       .then((YT) => {
         if (cancelled || !hostRef.current) return;
@@ -80,8 +88,10 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
             },
             onStateChange: (e) => {
               if (cancelled) return;
-              if (e.data === 1) setStatus('playing');
-              else if (e.data === 2) setStatus('paused');
+              if (e.data === 1) {
+                setStatus('playing');
+                setStarted(true);
+              } else if (e.data === 2) setStatus('paused');
               else if (e.data === 0) setStatus('ended');
               else if (e.data === 3) setStatus('buffering');
             },
@@ -101,6 +111,22 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
       playerRef.current = null;
     };
   }, [videoId]);
+
+  // If the phone blocks autoplay, show our play button after a short wait
+  useEffect(() => {
+    if (!ready || started) return undefined;
+    const timer = setTimeout(() => setStalled(true), 3000);
+    return () => clearTimeout(timer);
+  }, [ready, started]);
+
+  // Hide the top strip for a few seconds each time playback starts,
+  // so YouTube's title bar never flashes over the video
+  useEffect(() => {
+    if (status !== 'playing') return undefined;
+    setIntro(true);
+    const timer = setTimeout(() => setIntro(false), 3500);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   // Progress
   useEffect(() => {
@@ -135,6 +161,9 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
   }, []);
 
   const isPlaying = status === 'playing' || status === 'buffering';
+  const covered = !started || status === 'paused' || status === 'ended';
+  const showSpinner = !started && !stalled && !error;
+  const showBigButton = covered && (started || stalled);
 
   const togglePlay = () => {
     const p = playerRef.current;
@@ -171,6 +200,13 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
     setSeeking(false);
   };
 
+  const onPosterLoad = (e) => {
+    // maxresdefault returns a tiny placeholder when it does not exist
+    if (e.currentTarget.naturalWidth <= 200) {
+      setPoster(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
+    }
+  };
+
   const pct = time.duration ? Math.min(100, (time.current / time.duration) * 100) : 0;
 
   return (
@@ -189,6 +225,39 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
         <div className={`yt-wrap ${ready && !error ? 'ready' : ''}`}>
           <div ref={hostRef} />
         </div>
+
+        {!error && (
+          <button
+            type="button"
+            className={`trailer-cover ${covered ? 'covered' : ''}`}
+            onClick={togglePlay}
+            aria-label={isPlaying ? 'Pause trailer' : 'Play trailer'}
+          >
+            {covered && (
+              <img
+                className={`trailer-poster ${started ? 'dim' : ''}`}
+                src={poster}
+                alt=""
+                onLoad={onPosterLoad}
+                onError={() =>
+                  setPoster(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`)
+                }
+              />
+            )}
+            {showSpinner && <span className="trailer-spinner" />}
+            {showBigButton && (
+              <span className="trailer-bigplay">
+                {status === 'ended' ? (
+                  <RotateCcw size={30} />
+                ) : (
+                  <Play size={34} fill="currentColor" />
+                )}
+              </span>
+            )}
+            {started && status === 'buffering' && <span className="trailer-spinner small" />}
+            <span className={`trailer-intro-mask ${intro && !covered ? 'on' : ''}`} />
+          </button>
+        )}
 
         {error && (
           <div className="trailer-error">
@@ -278,4 +347,4 @@ export default function TrailerPlayer({ videoId, title, onClose }) {
       )}
     </div>
   );
-}
+  }
