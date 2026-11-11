@@ -22,6 +22,16 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate icons and splash images
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y fonts-inter
+          pip install pillow
+          python3 scripts/make-assets.py
+
       - run: npm install
 
       - name: Build the web app
@@ -33,13 +43,34 @@ jobs:
       - name: Create the Android project
         run: npx cap add android
 
-      - name: Icons and splash screen (optional)
+      - name: Icons and splash screen (NexusHD logo)
         run: |
-          if [ -f assets/logo.png ]; then
-            npx --yes @capacitor/assets generate --android --iconBackgroundColor '#07040f' --splashBackgroundColor '#07040f'
-          else
-            echo "No assets/logo.png found, using the default icon."
-          fi
+          test -f assets/icon-only.png || { echo "assets/ folder missing"; exit 1; }
+          npx --yes @capacitor/assets generate --android \
+            --iconBackgroundColor '#07040f' --iconBackgroundColorDark '#07040f' \
+            --splashBackgroundColor '#07040f' --splashBackgroundColorDark '#07040f'
+
+      - name: Make the Android 12+ splash use the NexusHD logo
+        run: |
+          node <<'EOF2'
+          const fs = require('fs');
+          const file = 'android/app/src/main/res/values/styles.xml';
+          let xml = fs.readFileSync(file, 'utf8');
+          const re = /(<style name="AppTheme\.NoActionBarLaunch"[^>]*>)([\s\S]*?)(<\/style>)/;
+          if (re.test(xml)) {
+            xml = xml.replace(re, (m, open, body, close) => {
+              if (!body.includes('windowSplashScreenAnimatedIcon')) {
+                body += '    <item name="windowSplashScreenBackground">#07040F</item>\n' +
+                        '    <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>\n';
+              }
+              return open + body + close;
+            });
+            fs.writeFileSync(file, xml);
+          } else {
+            console.log('Launch theme not found, skipping');
+          }
+          console.log(xml);
+          EOF2
 
       - name: Set permissions and app settings
         run: |
