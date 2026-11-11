@@ -1,0 +1,56 @@
+/* While the banner is showing it already covers the status bar area,
+   so screens below it don't add that space a second time. */
+.app-shell.has-banner {
+  --safe-top: 0px;
+}
+
+.net-banner {
+  flex: 0 0 auto;
+  max-height: 0;
+  overflow: hidden;
+  background: #2b1a4d;
+  color: #fff;
+  transition: max-height 0.3s ease, background 0.3s ease;
+}
+
+.net-banner.restored {
+  background: #15803d;
+}
+
+.net-banner.visible {
+  max-height: 120px;
+}
+
+.net-banner-inner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 16px 10px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.net-banner-inner strong {
+  font-weight: 700;
+}
+
+.net-banner-inner span {
+  flex: 1 1 auto;
+  min-width: 0;
+  opacity: 0.8;
+}
+
+.net-banner-inner button {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.net-banner-inner button:active {
+  background: rgba(255, 255, 255, 0.3);
+  }
