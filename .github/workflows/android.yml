@@ -40,6 +40,33 @@ jobs:
             --iconBackgroundColor '#07040f' --iconBackgroundColorDark '#07040f' \
             --splashBackgroundColor '#07040f' --splashBackgroundColorDark '#07040f'
 
+      - name: Fix the adaptive icon background
+        run: |
+          node <<'EOF3'
+          const fs = require('fs');
+          const path = require('path');
+          const res = 'android/app/src/main/res';
+          const hasBg = fs.readdirSync(res).some(
+            (d) => d.startsWith('mipmap') &&
+              fs.readdirSync(path.join(res, d)).some((f) => f.startsWith('ic_launcher_background.'))
+          );
+          if (!hasBg) {
+            for (const d of fs.readdirSync(res).filter((x) => x.startsWith('mipmap-anydpi'))) {
+              for (const f of fs.readdirSync(path.join(res, d)).filter((x) => x.endsWith('.xml'))) {
+                const p = path.join(res, d, f);
+                const xml = fs.readFileSync(p, 'utf8').replace(/@mipmap\/ic_launcher_background/g, '@color/ic_launcher_background');
+                fs.writeFileSync(p, xml);
+                console.log('patched', p);
+              }
+            }
+            fs.writeFileSync(
+              path.join(res, 'values', 'ic_launcher_background.xml'),
+              '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#07040F</color>\n</resources>\n'
+            );
+          } else {
+            console.log('Background images exist, nothing to fix');
+          }
+
       - name: Make the Android 12+ splash use the NexusHD logo
         run: |
           node <<'EOF2'
