@@ -17,6 +17,7 @@ import {
 import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
+import EpisodeList from '../components/EpisodeList.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import TrailerPlayer from '../components/TrailerPlayer.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
@@ -26,6 +27,7 @@ import { FREE_FILMS, archivePage, loadFilm, searchFreeFilms } from '../services/
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/details.css';
 import '../styles/free.css';
+import '../styles/series.css';
 
 function pickTrailer(videos = []) {
   const yt = videos.filter((v) => v.site === 'YouTube');
@@ -43,6 +45,15 @@ function formatRuntime(minutes) {
   const m = minutes % 60;
   return h ? `${h}h ${m}m` : `${m}m`;
 }
+
+const STATUS = {
+  'Returning Series': { label: 'Ongoing', live: true },
+  'In Production': { label: 'In production', live: true },
+  Planned: { label: 'Planned', live: false },
+  Pilot: { label: 'Pilot', live: false },
+  Ended: { label: 'Ended', live: false },
+  Canceled: { label: 'Canceled', live: false },
+};
 
 const normalize = (s) =>
   String(s || '')
@@ -202,6 +213,10 @@ export default function MovieDetails({ kind = 'movie' }) {
   const longText = (m.overview || '').length > 180;
   const heroImg = imageUrl(m.backdrop_path, 'w780') || imageUrl(m.poster_path, 'w500');
   const freeFilm = free.data;
+  const status = isTv ? STATUS[m.status] : null;
+  const network = isTv ? m.networks?.[0]?.name : '';
+  const creators = isTv ? (m.created_by || []).map((c) => c.name).slice(0, 2).join(', ') : '';
+  const episodeCount = isTv ? m.number_of_episodes || 0 : 0;
 
   const onToggleSave = () => {
     const added = toggle(m);
@@ -268,6 +283,7 @@ export default function MovieDetails({ kind = 'movie' }) {
                 <span>
                   <Tv size={14} />
                   {seasons} {seasons === 1 ? 'season' : 'seasons'}
+                  {episodeCount > 0 ? ` · ${episodeCount} episodes` : ''}
                 </span>
               )}
             </div>
@@ -281,6 +297,14 @@ export default function MovieDetails({ kind = 'movie' }) {
                 {g.name}
               </span>
             ))}
+          </div>
+        )}
+
+        {isTv && (status || network || creators) && (
+          <div className="tv-info">
+            {status && <span className={`tv-badge ${status.live ? 'live' : ''}`}>{status.label}</span>}
+            {network && <span>{network}</span>}
+            {creators && <span>Created by {creators}</span>}
           </div>
         )}
 
@@ -318,6 +342,15 @@ export default function MovieDetails({ kind = 'movie' }) {
             <Share2 size={22} />
           </button>
         </div>
+
+        {isTv && (
+          <EpisodeList
+            key={m.id}
+            tvId={m.id}
+            seasons={m.seasons || []}
+            nextEpisode={m.next_episode_to_air || null}
+          />
+        )}
 
         {m.overview && (
           <section className="d-section">
@@ -383,4 +416,4 @@ export default function MovieDetails({ kind = 'movie' }) {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-    }
+  }
