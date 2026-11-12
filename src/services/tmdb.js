@@ -58,6 +58,8 @@ export const tmdb = {
   tvDetails: async (id) =>
     asTvDetails(await tmdbRequest(`tv/${id}`, { append_to_response: 'videos,credits' })),
   tvSimilar: async (id) => mapResults(await tmdbRequest(`tv/${id}/similar`), asTv),
+  // one season with all its episodes
+  tvSeason: (id, season) => tmdbRequest(`tv/${id}/season/${season}`),
 };
 
 export function imageUrl(path, size = 'w500') {
