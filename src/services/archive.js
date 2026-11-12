@@ -83,14 +83,41 @@ export function formatClock(seconds) {
   return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
 }
 
-/* Picks a standard-quality MP4 (the smallest one over 20 MB) so playback
-   starts quickly and uses less mobile data. */
-export function pickVideo(files = []) {
-  const mp4 = files
-    .filter((f) => /\.mp4$/i.test(f.name) && Number(f.size) > 20 * 1024 * 1024)
-    .sort((a, b) => Number(a.size) - Number(b.size));
-  return mp4[0] || null;
+/* Lists the playable video files of an item, best first.
+   - skips trailers, samples and previews
+   - keeps only the longest version (the full film)
+   - prefers the browser-friendly files the Archive makes itself
+     (derivatives) over the uploader's original file
+   - then the smallest file, so playback starts quickly on mobile data
+   The player tries the next file if one fails. */
+const SKIP = /trailer|sample|preview|promo|teaser|_thumb|\.thumbs/i;
+
+export function pickVideos(files = []) {
+  const playable = files.filter(
+    (f) =>
+      /\.(mp4|m4v|webm|ogv)$/i.test(f.name) &&
+      !SKIP.test(f.name) &&
+      Number(f.size) > 2 * 1024 * 1024
+  );
+  const longest = Math.max(0, ...playable.map((f) => Number(f.length) || 0));
+  const full = longest
+    ? playable.filter((f) => (Number(f.length) || 0) >= longest * 0.9)
+    : playable;
+  const rank = (f) => {
+    const type = /\.(mp4|m4v)$/i.test(f.name) ? 0 : 1;
+    const derived = f.source === 'derivative' ? 0 : 1;
+    return [type, derived, Number(f.size)];
+  };
+  return full.sort((x, y) => {
+    const a = rank(x);
+    const b = rank(y);
+    return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+  });
 }
+
+/* Other files to try if the first one does not play: src -> [urls] */
+const alternates = new Map();
+export const alternatesFor = (src) => alternates.get(src) || [];
 
 const firstValue = (v) => (Array.isArray(v) ? v[0] : v);
 
@@ -103,7 +130,8 @@ export async function loadFilm(entry) {
   if (!data.metadata || !data.files || data.is_dark) throw new Error('Film not available');
 
   const m = data.metadata;
-  const file = pickVideo(data.files);
+  const videos = pickVideos(data.files);
+  const file = videos[0] || null;
   const description = Array.isArray(m.description) ? m.description.join(' ') : m.description || '';
 
   const film = {
@@ -115,6 +143,12 @@ export async function loadFilm(entry) {
     sizeBytes: file ? Number(file.size) : 0,
     src: file ? fileUrl(entry.id, file.name) : null,
   };
+  if (film.src) {
+    alternates.set(
+      film.src,
+      videos.slice(1, 5).map((v) => fileUrl(entry.id, v.name))
+    );
+  }
   cache.set(entry.id, film);
   return film;
 }
@@ -177,4 +211,4 @@ export async function searchFreeFilms({ term = '', sort = 'popular', page = 1, r
     });
 
   return { films, hasMore: page * rows < total };
-                           }
+     }
