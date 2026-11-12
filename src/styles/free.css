@@ -136,9 +136,60 @@
 }
 
 /* ---------- Film sheet ---------- */
-.film-sheet {
-  max-height: 88%;
+.sheet.film-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 90%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sheet-grab {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 4px;
+  margin: 10px auto 0;
+  border-radius: 4px;
+  background: var(--card-border);
+}
+
+.film-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 20px 8px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.film-wide {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.film-bar {
+  flex: 0 0 auto;
+  padding: 12px 20px calc(var(--safe-bottom) + 16px);
+  border-top: 1px solid var(--card-border);
+  background: var(--bg-elevated);
+}
+
+.film-bar-row {
+  display: flex;
+  gap: 10px;
+}
+
+.film-bar-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.film-bar-row > .film-cancel {
+  flex: 0 0 50px;
+}
+
+.film-bar .film-dl {
+  margin-bottom: 12px;
 }
 
 .film-head {
@@ -179,18 +230,6 @@
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.film-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.film-actions .btn-primary,
-.film-actions .btn-secondary {
-  width: 100%;
 }
 
 .film-rights {
@@ -267,7 +306,7 @@
 
 .player-error .btn-secondary {
   color: #fff;
-  }
+}
 
 .free-heading {
   margin: 22px 20px 12px;
@@ -332,4 +371,4 @@
   border-radius: 12px;
   font-size: 16px;
   font-weight: 500;
-    }
+  }
