@@ -4,6 +4,7 @@ import { Search, Play, Flame, WifiOff, Film, ChevronRight } from 'lucide-react';
 import BrandMark from '../components/BrandMark.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
+import ContinueRow from '../components/ContinueRow.jsx';
 import useHistory, { recordView } from '../hooks/useHistory.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/home.css';
@@ -174,6 +175,11 @@ export default function Home() {
                 ))}
           </div>
 
+          <ContinueRow
+            onOpenFilm={(film) => navigate(`/free?play=${encodeURIComponent(film.id)}`)}
+            onOpenSeries={(id) => navigate(`/tv/${id}`)}
+          />
+
           <button className="free-promo" onClick={() => navigate('/free')}>
             <span className="free-promo-icon">
               <Film size={24} />
@@ -245,4 +251,4 @@ export default function Home() {
       )}
     </div>
   );
-              }
+    }
