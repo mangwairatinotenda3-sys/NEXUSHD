@@ -27,6 +27,7 @@ jobs:
       - name: Build the web app
         run: npm run build
         env:
+          VITE_BUILD: ${{ github.run_number }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
@@ -66,6 +67,7 @@ jobs:
           } else {
             console.log('Background images exist, nothing to fix');
           }
+          EOF3
 
       - name: Make the Android 12+ splash use the NexusHD logo
         run: |
@@ -111,8 +113,39 @@ jobs:
           console.log(xml);
           EOF
 
+      - name: Notification icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cat > android/app/src/main/res/drawable/ic_stat_nexus.xml <<'EOF4'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path
+                  android:fillColor="#FFFFFFFF"
+                  android:pathData="M8,5v14l11,-7z" />
+          </vector>
+          EOF4
+
       - name: Copy the web app into the Android project
         run: npx cap sync android
+
+      - name: Use one fixed signing key, so new builds install over old ones
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f signing/debug.keystore ]; then
+            mkdir -p signing
+            keytool -genkeypair -keystore signing/debug.keystore -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 36500 \
+              -dname "CN=Android Debug,O=Android,C=US"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -f signing/debug.keystore
+            git commit -m "Add the debug signing key used for test builds"
+            git push || echo "Could not save the key to the repo, this build still works"
+          fi
+          cp signing/debug.keystore "$HOME/.android/debug.keystore"
 
       - name: Build the APK
         working-directory: android
@@ -132,6 +165,9 @@ jobs:
         with:
           tag_name: android-latest
           name: NexusHD Android (latest build)
-          body: Test build of the NexusHD Android app. Download NexusHD-debug.apk below and install it.
+          body: |
+            Test build of the NexusHD Android app. Download NexusHD-debug.apk below and install it.
+
+            Build ${{ github.run_number }}
           prerelease: true
           files: NexusHD-debug.apk
