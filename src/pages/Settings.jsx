@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Moon, Bell, Info, ChevronRight, Search, Eye } from 'lucide-react';
+import { Moon, Bell, Info, ChevronRight, Search, Eye, RefreshCw } from 'lucide-react';
 import Header from '../components/Header.jsx';
 import BrandMark from '../components/BrandMark.jsx';
+import { UpdateSheet } from '../components/UpdatePrompt.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import useHistory from '../hooks/useHistory.js';
 import { useApp } from '../context/AppContext.jsx';
+import { ensureNotificationPermission } from '../services/notify.js';
+import { APP_VERSION, BUILD, checkForUpdate, updatesSupported } from '../services/update.js';
+import '../styles/update.css';
 
 export default function Settings() {
   const { theme, setTheme, notifications, setNotifications } = useApp();
@@ -12,6 +16,8 @@ export default function Settings() {
   const history = useHistory();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [update, setUpdate] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
@@ -19,7 +25,35 @@ export default function Settings() {
   const showToast = (message) => {
     setToast(message);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2000);
+    toastTimer.current = setTimeout(() => setToast(''), 2400);
+  };
+
+  // Turning alerts on asks Android for permission first
+  const toggleNotifications = async () => {
+    if (notifications) {
+      setNotifications(false);
+      return;
+    }
+    const permission = await ensureNotificationPermission();
+    if (permission === 'denied') {
+      showToast('Notifications are blocked. Allow them for NexusHD in Android settings.');
+      return;
+    }
+    setNotifications(true);
+  };
+
+  const checkUpdates = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      const result = await checkForUpdate({ force: true });
+      if (result.available) setUpdate(result);
+      else showToast("You're on the latest version");
+    } catch {
+      showToast("Couldn't check for updates. Check your connection.");
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -42,7 +76,7 @@ export default function Settings() {
 
         <button
           className="row"
-          onClick={() => setNotifications(!notifications)}
+          onClick={toggleNotifications}
           role="switch"
           aria-checked={notifications}
         >
@@ -72,8 +106,20 @@ export default function Settings() {
         <div className="row">
           <span style={{ width: 22 }} />
           <span className="row-label">Version</span>
-          <span className="muted">v1.0.0</span>
+          <span className="muted">
+            v{APP_VERSION}
+            {BUILD ? ` · build ${BUILD}` : ''}
+          </span>
         </div>
+
+        {updatesSupported() && (
+          <button className="row" onClick={checkUpdates} disabled={checking}>
+            <RefreshCw size={22} />
+            <span className="row-label">Check for updates</span>
+            <span className="row-status">{checking ? 'Checking…' : ''}</span>
+            <ChevronRight size={20} className="muted" />
+          </button>
+        )}
       </div>
 
       <div className="card">
@@ -115,6 +161,8 @@ export default function Settings() {
           Made for movie lovers ❤️
         </div>
       </div>
+
+      {update && <UpdateSheet info={update} onLater={() => setUpdate(null)} />}
 
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
