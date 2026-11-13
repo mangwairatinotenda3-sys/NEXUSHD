@@ -22,6 +22,11 @@ if (Capacitor.isNativePlatform()) {
   // The Back button closes an open player or sheet first, then goes back a page,
   // and leaves the app from the home screen.
   const closeOverlay = () => {
+    const subsMenu = document.querySelector('.player .subs-backdrop');
+    if (subsMenu) {
+      subsMenu.click();
+      return true;
+    }
     const closePlayer = document.querySelector('.player .player-top .icon-btn');
     if (closePlayer) {
       closePlayer.click();
@@ -52,4 +57,4 @@ if (Capacitor.isNativePlatform()) {
     },
     true
   );
-  }
+    }
