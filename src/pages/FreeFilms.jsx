@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Check,
   Download as DownloadIcon,
   ExternalLink,
   Info,
@@ -8,6 +8,7 @@ import {
   Play,
   RotateCw,
   Search as SearchIcon,
+  Share2,
   Trash2,
   WifiOff,
   X,
@@ -16,6 +17,7 @@ import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
+import useContinue, { recordFilmProgress } from '../hooks/useContinue.js';
 import useDownloads, {
   getPlayableUrl,
   pauseDownload,
@@ -33,6 +35,7 @@ import {
   searchFreeFilms,
 } from '../services/archive.js';
 import { formatBytes } from '../utils/format.js';
+import { shareLink } from '../services/share.js';
 import '../styles/free.css';
 
 const SORTS = [
@@ -104,6 +107,9 @@ export default function FreeFilms() {
   const [player, setPlayer] = useState(null);
   const [toast, setToast] = useState('');
   const [progress, setProgress] = useLocalStorage('nexushd:free-progress', {});
+  const continueItems = useContinue();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledPlay = useRef(false);
   const { items: downloads, supported } = useDownloads();
 
   const sentinelRef = useRef(null);
@@ -230,16 +236,63 @@ export default function FreeFilms() {
     setSelected(null);
     const rec = dlMap.get(film.id);
     if (rec && rec.status === 'completed') {
-      setPlayer({ film, src: null, loading: true, offline: true });
+      setPlayer({ film, src: null, loading: true, offline: true, subtitles: rec.subs || [] });
       try {
         const url = await getPlayableUrl(film.id);
-        setPlayer({ film, src: url, loading: false, offline: true });
+        setPlayer({ film, src: url, loading: false, offline: true, subtitles: rec.subs || [] });
       } catch {
-        setPlayer({ film, src: null, loading: false, offline: true });
+        setPlayer({ film, src: null, loading: false, offline: true, subtitles: [] });
       }
     } else {
-      setPlayer({ film, src: film.src, loading: false, offline: false });
+      setPlayer({
+        film,
+        src: film.src,
+        loading: false,
+        offline: false,
+        subtitles: film.subs || [],
+      });
     }
+  };
+
+  // Opened from "Continue Watching" on Home (#/free?play=<id>): go straight to the film
+  const playParam = searchParams.get('play');
+  const playRef = useRef(play);
+  playRef.current = play;
+  useEffect(() => {
+    if (!playParam || handledPlay.current) return;
+    handledPlay.current = true;
+    setSearchParams({}, { replace: true });
+    const saved = continueItems.find((c) => c.id === playParam);
+    const entry = FREE_FILMS.find((f) => f.id === playParam) || {
+      id: playParam,
+      title: saved?.title || playParam,
+      year: saved?.year || null,
+      rights: 'Tagged as public domain or CC0 by the uploader on the Internet Archive',
+    };
+    const local = dlMap.get(playParam);
+    if (local && local.status === 'completed') {
+      // already downloaded: play it from the phone, no connection needed
+      playRef.current({ ...entry, title: local.title, src: local.src, subs: local.subs || [] });
+      return;
+    }
+    setPlayer({ film: entry, src: null, loading: true, offline: false, subtitles: [] });
+    loadFilm(entry)
+      .then((film) => playRef.current(film))
+      .catch(() => {
+        setPlayer(null);
+        showToast("Couldn't open that film. Check your connection and try again.");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playParam]);
+
+  const share = async (film) => {
+    const result = await shareLink({
+      title: film.title,
+      text: `Watch ${film.title}, a free public domain film, on the Internet Archive:`,
+      url: archivePage(film.id),
+    });
+    if (result === 'copied') showToast('Link copied');
+    else if (result === 'failed') showToast("Couldn't share this film");
   };
 
   const closePlayer = () => {
@@ -426,6 +479,7 @@ export default function FreeFilms() {
                   className="btn-secondary film-wide"
                   onClick={() => {
                     saveProgress(selected.id, 0);
+                    recordFilmProgress(details, 0);
                     play(details);
                   }}
                 >
@@ -439,14 +493,19 @@ export default function FreeFilms() {
                 </button>
               )}
 
-              <a
-                className="btn-secondary film-wide"
-                href={archivePage(selected.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View on Archive.org <ExternalLink size={16} />
-              </a>
+              <div className="film-links">
+                <button className="btn-secondary film-wide" onClick={() => share(selected)}>
+                  <Share2 size={16} /> Share
+                </button>
+                <a
+                  className="btn-secondary film-wide"
+                  href={archivePage(selected.id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Archive.org <ExternalLink size={16} />
+                </a>
+              </div>
 
               <p className="film-rights">
                 Rights: {selected.rights}.
@@ -509,7 +568,7 @@ export default function FreeFilms() {
                       className="btn-secondary"
                       onClick={() => {
                         startDownload(details);
-                        showToast('Downloading. Keep NexusHD open until it finishes.');
+                        showToast('Downloading. It carries on if you reopen NexusHD.');
                       }}
                     >
                       <DownloadIcon size={18} /> Download
@@ -524,40 +583,4 @@ export default function FreeFilms() {
                   )}
 
                   {rec && (rec.status === 'paused' || rec.status === 'error') && (
-                    <button className="btn-secondary" onClick={() => resumeDownload(rec.id)}>
-                      <RotateCw size={16} /> {rec.status === 'error' ? 'Try again' : 'Resume'}
-                    </button>
-                  )}
-
-                  {rec && rec.status !== 'completed' && (
-                    <button
-                      className="btn-secondary film-cancel"
-                      onClick={() => removeDownload(rec.id)}
-                      aria-label="Cancel download"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {player && (
-        <VideoPlayer
-          title={player.film.title}
-          src={player.src}
-          loading={player.loading}
-          startAt={progress[player.film.id] || 0}
-          fallbackHref={archivePage(player.film.id)}
-          onClose={closePlayer}
-          onProgress={(s) => saveProgress(player.film.id, s)}
-        />
-      )}
-
-      {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
-    </div>
-  );
-  }
+                    <button className="btn-secondary" onClick={() => resumeD
