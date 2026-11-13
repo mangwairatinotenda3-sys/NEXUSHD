@@ -1,12 +1,19 @@
 import { useSyncExternalStore } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
+import { fetchSubtitleVtt } from './subtitles.js';
+import { ensureNotificationPermission, notifyDownload } from './notify.js';
 
 /* Offline downloads. Files are saved in the browser's storage (IndexedDB) in
    4 MB pieces, so a download can be paused and resumed. On the web a download
-   only runs while NexusHD is open. */
+   only runs while NexusHD is open. A download that was interrupted (app
+   closed, connection lost) carries on by itself when NexusHD is opened again,
+   up to three tries in a row, unless you paused it yourself. */
 
 const DB_NAME = 'nexushd-offline';
 const CHUNK_BYTES = 4 * 1024 * 1024;
 const MIRROR_KEY = 'nexushd:downloads';
+const MAX_AUTO_TRIES = 3;
 
 export const downloadsSupported = () =>
   typeof indexedDB !== 'undefined' &&
@@ -124,11 +131,15 @@ function errorMessage(err) {
   return 'The download stopped. Try again.';
 }
 
+// a lost connection is worth trying again; a full phone or a refusing server is not
+const isTransient = (message) =>
+  !(message.startsWith('Not enough storage') || message.startsWith('The server'));
+
 async function run(id) {
   if (!records.get(id) || controllers.has(id)) return;
   const controller = new AbortController();
   controllers.set(id, controller);
-  patch(id, { status: 'downloading', error: '' }, true);
+  patch(id, { status: 'downloading', error: '', resumeOnOpen: true }, true);
 
   let buffer = [];
   let bufferBytes = 0;
@@ -143,6 +154,7 @@ async function run(id) {
       stored: rec.stored + blob.size,
       bytes: rec.stored + blob.size,
       chunks: rec.chunks + 1,
+      tries: 0,
     };
     await saveChunk(next, rec.chunks, blob);
     if (!records.has(id)) return;
@@ -197,18 +209,39 @@ async function run(id) {
     if (done) {
       patch(
         id,
-        { status: 'completed', bytes: done.stored, size: done.stored, completedAt: Date.now() },
+        {
+          status: 'completed',
+          bytes: done.stored,
+          size: done.stored,
+          completedAt: Date.now(),
+          resumeOnOpen: false,
+          tries: 0,
+        },
         true
       );
+      notifyDownload({
+        key: id,
+        title: 'Download finished',
+        body: `${done.title} is ready to watch offline.`,
+      });
     }
   } catch (err) {
     if (!controller.signal.aborted && records.has(id)) {
-      patch(id, { status: 'error', error: errorMessage(err), bytes: records.get(id).stored }, true);
+      const message = errorMessage(err);
+      const transient = isTransient(message);
+      const rec = records.get(id);
+      patch(id, { status: 'error', error: message, bytes: rec.stored, resumeOnOpen: transient }, true);
+      if (transient && (rec.tries || 0) < MAX_AUTO_TRIES) {
+        // try again shortly, waiting a little longer each time
+        setTimeout(() => resumeInterrupted(id), 2500 * ((rec.tries || 0) + 1));
+      } else {
+        notifyDownload({ key: id, title: 'Download stopped', body: `${rec.title}: ${message}` });
+      }
     }
   } finally {
     controllers.delete(id);
   }
-}
+   }
 
 async function init() {
   if (!downloadsSupported()) {
@@ -219,6 +252,7 @@ async function init() {
     const db = await openDb();
     const all = await request(db.transaction('downloads').objectStore('downloads').getAll());
     all.forEach((rec) => {
+      rec.tries = 0;
       // A download that was running when the app closed is now paused.
       if (rec.status === 'downloading') {
         rec.status = 'paused';
@@ -230,6 +264,7 @@ async function init() {
     /* storage blocked */
   }
   emit(false);
+  resumeInterrupted();
 }
 init();
 
@@ -237,7 +272,10 @@ export async function startDownload(film) {
   if (!downloadsSupported() || !film?.src) return;
   const existing = records.get(film.id);
   if (existing) {
-    if (existing.status !== 'completed') run(film.id);
+    if (existing.status !== 'completed') {
+      patch(film.id, { tries: 0 });
+      run(film.id);
+    }
     return;
   }
   try {
@@ -258,24 +296,45 @@ export async function startDownload(film) {
     stored: 0,
     chunks: 0,
     error: '',
+    subs: [],
+    resumeOnOpen: false,
+    tries: 0,
     createdAt: Date.now(),
   };
   records.set(rec.id, rec);
   emit();
   await putRecord(rec).catch(() => {});
+  ensureNotificationPermission();
   run(rec.id);
+  saveSubtitles(rec.id, film.subs);
 }
 
-export function pauseDownload(id) {
+/* Keeps the film's subtitles with the download so they work offline too */
+async function saveSubtitles(id, subs = []) {
+  const saved = [];
+  for (const s of subs.slice(0, 3)) {
+    try {
+      saved.push({ label: s.label, text: await fetchSubtitleVtt(s.url) });
+    } catch {
+      /* this one is not available */
+    }
+  }
+  if (saved.length && records.has(id)) patch(id, { subs: saved }, true);
+}
+
+/* auto = true when the app pauses it (for example, no connection): it then
+   carries on by itself later. A pause from the person stays paused. */
+export function pauseDownload(id, auto = false) {
   const rec = records.get(id);
   if (!rec) return;
   controllers.get(id)?.abort();
-  patch(id, { status: 'paused', bytes: rec.stored }, true);
+  patch(id, { status: 'paused', bytes: rec.stored, resumeOnOpen: auto, tries: 0 }, true);
 }
 
 export function resumeDownload(id) {
   const rec = records.get(id);
   if (!rec || rec.status === 'completed') return;
+  patch(id, { tries: 0 });
   run(id);
 }
 
@@ -305,7 +364,27 @@ export async function getPlayableUrl(id) {
   return URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
 }
 
+/* Starts again what was interrupted, without the person doing anything:
+   downloads that were running when the app closed or the connection dropped. */
+function resumeInterrupted(onlyId) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  records.forEach((rec) => {
+    if (onlyId && rec.id !== onlyId) return;
+    if (!rec.resumeOnOpen || rec.status === 'completed' || rec.status === 'downloading') return;
+    if (controllers.has(rec.id) || (rec.tries || 0) >= MAX_AUTO_TRIES) return;
+    patch(rec.id, { tries: (rec.tries || 0) + 1 });
+    run(rec.id);
+  });
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') resumeInterrupted();
+  });
+  if (Capacitor.isNativePlatform()) App.addListener('resume', () => resumeInterrupted());
+}
+
 export default function useDownloads() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   return { items: snapshot.items, loading: snapshot.loading, supported: downloadsSupported() };
-  }
+     }
