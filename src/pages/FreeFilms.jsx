@@ -419,7 +419,7 @@ export default function FreeFilms() {
         />
       )}
 
-      {selected && (
+            {selected && (
         <div className="sheet-backdrop" onClick={() => setSelected(null)}>
           <div className="sheet film-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-grab" />
@@ -583,4 +583,44 @@ export default function FreeFilms() {
                   )}
 
                   {rec && (rec.status === 'paused' || rec.status === 'error') && (
-                    <button className="btn-secondary" onClick={() => resumeD
+                    <button className="btn-secondary" onClick={() => resumeDownload(rec.id)}>
+                      <RotateCw size={16} /> {rec.status === 'error' ? 'Try again' : 'Resume'}
+                    </button>
+                  )}
+
+                  {rec && rec.status !== 'completed' && (
+                    <button
+                      className="btn-secondary film-cancel"
+                      onClick={() => removeDownload(rec.id)}
+                      aria-label="Cancel download"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {player && (
+        <VideoPlayer
+          title={player.film.title}
+          src={player.src}
+          loading={player.loading}
+          startAt={progress[player.film.id] || 0}
+          subtitles={player.subtitles || []}
+          fallbackHref={archivePage(player.film.id)}
+          onClose={closePlayer}
+          onProgress={(s) => {
+            saveProgress(player.film.id, s);
+            recordFilmProgress(player.film, s);
+          }}
+        />
+      )}
+
+      {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
+    </div>
+  );
+                      }
