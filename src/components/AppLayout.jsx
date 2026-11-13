@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Wifi, WifiOff } from 'lucide-react';
 import BottomNav from './BottomNav.jsx';
+import UpdatePrompt from './UpdatePrompt.jsx';
 import useOnline from '../hooks/useOnline.js';
 import useDownloads, { pauseDownload, resumeDownload } from '../services/downloadManager.js';
 import '../styles/offline.css';
@@ -30,7 +31,7 @@ export default function AppLayout() {
         .filter((d) => d.status === 'downloading')
         .forEach((d) => {
           autoPaused.current.add(d.id);
-          pauseDownload(d.id);
+          pauseDownload(d.id, true);
         });
       setWaiting(autoPaused.current.size);
       setBanner({ visible: true, kind: 'offline' });
@@ -98,6 +99,7 @@ export default function AppLayout() {
         <Outlet />
       </main>
       {showNav && <BottomNav />}
+      <UpdatePrompt />
     </div>
   );
-    }
+      }
