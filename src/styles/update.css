@@ -1,0 +1,31 @@
+/* ---------- Update sheet ---------- */
+.update-sheet {
+  text-align: center;
+}
+
+.update-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 4px auto 14px;
+  border-radius: 20px;
+  background: var(--primary-soft);
+  color: var(--primary-bright);
+}
+
+/* ---------- Settings: small status text on a row ---------- */
+.row-status {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.row-status.accent {
+  font-weight: 600;
+  color: var(--primary-bright);
+}
+
+.update-sheet .sheet-actions .primary {
+  background: var(--primary);
+  color: #fff;
+}
