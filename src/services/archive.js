@@ -5,6 +5,8 @@
    - searchFreeFilms() browses more titles, but only ones the uploader has
      tagged with a Public Domain or CC0 licence. */
 
+import { pickSubtitles } from './subtitles.js';
+
 export const FREE_FILMS = [
   {
     id: 'Nosferatu1922',
@@ -142,6 +144,7 @@ export async function loadFilm(entry) {
     seconds: file?.length ? Math.round(Number(file.length)) : 0,
     sizeBytes: file ? Number(file.size) : 0,
     src: file ? fileUrl(entry.id, file.name) : null,
+    subs: pickSubtitles(data.files, (name) => fileUrl(entry.id, name)),
   };
   if (film.src) {
     alternates.set(
@@ -211,4 +214,4 @@ export async function searchFreeFilms({ term = '', sort = 'popular', page = 1, r
     });
 
   return { films, hasMore: page * rows < total };
-     }
+   }
