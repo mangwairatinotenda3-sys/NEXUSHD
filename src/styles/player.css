@@ -1,32 +1,45 @@
-/* ---------- Player: loading pill ---------- */
-.player-wait {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--safe-bottom, 0px) + 90px);
-  display: grid;
-  place-items: center;
-  pointer-events: none;
+/* ---------- Video player (a movie-app style player) ----------
+   Tap = show or hide the controls. Double-tap the left or right side =
+   back or forward 10 seconds. The classes start with "pl-" and are
+   scoped under ".player.pl" so they win over the older player rules. */
+.player.pl {
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  touch-action: manipulation;
 }
 
-.player-wait span {
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
-  font-size: 13px;
+.player.pl .pl-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.player.pl .pl-tap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ----- top bar ----- */
+.player.pl .player-top {
+  z-index: 3;
+  padding: calc(var(--safe-top, 0px) + 8px) max(12px, env(safe-area-inset-right)) 34px
+    max(12px, env(safe-area-inset-left));
+  transition: opacity 0.25s;
+}
+
+.player.pl .player-top .icon-btn {
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
 }
 
 .player-title {
   flex: 1;
-}
-
-/* ---------- Player: subtitles ---------- */
-.player video::cue {
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
-  font-size: 1.05em;
-  line-height: 1.3;
 }
 
 .player-top .player-cc {
@@ -38,19 +51,310 @@
   color: #fff;
 }
 
+/* ----- centre buttons ----- */
+.pl-center {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(28px, 9vw, 72px);
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+.pl-center button {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  pointer-events: auto;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.pl-center button:active {
+  transform: scale(0.88);
+}
+
+.pl-play {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+}
+
+.pl-play svg {
+  margin-left: 2px;
+}
+
+.pl-skip {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+.pl-skip-ico {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.pl-skip-ico b {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+/* ----- bottom controls ----- */
+.pl-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 36px max(18px, env(safe-area-inset-right)) calc(var(--safe-bottom, 0px) + 12px)
+    max(18px, env(safe-area-inset-left));
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+.pl-timeline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.pl-time {
+  min-width: 42px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.pl-seek {
+  position: relative;
+  flex: 1;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  touch-action: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.pl-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.pl-buf,
+.pl-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+}
+
+.pl-buf {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.pl-fill {
+  background: var(--primary-bright, #a56bff);
+}
+
+.pl-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s;
+  pointer-events: none;
+}
+
+.pl-thumb.drag {
+  transform: scale(1.5);
+}
+
+.pl-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+  pointer-events: none;
+}
+
+.pl-act {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 64px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: auto;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.pl-act:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ----- hidden controls ----- */
+.pl.pl-ui-off .player-top,
+.pl.pl-ui-off .pl-center,
+.pl.pl-ui-off .pl-bottom {
+  opacity: 0;
+}
+
+.pl.pl-ui-off .player-top *,
+.pl.pl-ui-off .pl-center *,
+.pl.pl-ui-off .pl-bottom * {
+  pointer-events: none !important;
+}
+
+/* ----- lock ----- */
+.pl-unlock {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom, 0px) + 28px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.25s;
+}
+
+.pl-unlock.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ----- double-tap jump, loading pill, small notes ----- */
+.pl-flash {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34%;
+  pointer-events: none;
+  animation: pl-pop 0.75s ease both;
+}
+
+.pl-flash.left {
+  left: 0;
+  border-radius: 0 60% 60% 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pl-flash.right {
+  right: 0;
+  border-radius: 60% 0 0 60%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pl-flash span {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+@keyframes pl-pop {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.pl-wait,
+.pl-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.pl-wait {
+  top: 62%;
+}
+
+.pl-note {
+  top: calc(var(--safe-top, 0px) + 72px);
+}
+
+.pl-wait span,
+.pl-note span {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 13px;
+}
+
+/* ----- subtitles ----- */
+.player video::cue {
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 1.05em;
+  line-height: 1.3;
+}
+
 .subs-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 6;
   animation: fade 0.15s ease both;
 }
 
 .subs-menu {
   position: absolute;
   top: calc(var(--safe-top, 0px) + 60px);
-  right: 12px;
+  right: max(12px, env(safe-area-inset-right));
   width: min(260px, calc(100% - 24px));
-  max-height: 60%;
+  max-height: 70%;
   padding: 6px;
   overflow-y: auto;
   border-radius: 16px;
@@ -60,6 +364,15 @@
   color: #fff;
   backdrop-filter: blur(10px);
   animation: sheet-up 0.2s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.subs-menu.pl-speed {
+  top: auto;
+  bottom: calc(var(--safe-bottom, 0px) + 84px);
+  right: auto;
+  left: 50%;
+  margin-left: -130px;
+  max-height: 60%;
 }
 
 .subs-head {
@@ -118,4 +431,4 @@
 
 .film-links .film-wide {
   margin-top: 0;
-  }
+    }
