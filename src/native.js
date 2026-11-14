@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { BACK_EVENT } from './services/welcome.js';
 
 /* Native touches for the Android app. On the web this does nothing. */
 
@@ -32,6 +33,11 @@ if (Capacitor.isNativePlatform()) {
       closePlayer.click();
       return true;
     }
+    // the welcome screens: Back goes to the previous screen
+    if (document.querySelector('.onb')) {
+      window.dispatchEvent(new Event(BACK_EVENT));
+      return true;
+    }
     const layer = document.querySelector('.trailer-modal, .sheet-backdrop');
     if (layer) {
       layer.click();
@@ -57,4 +63,4 @@ if (Capacitor.isNativePlatform()) {
     },
     true
   );
-    }
+}
