@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version number, for example 1.0.0
+        description: Version number, for example 1.2.0
         required: true
-        default: '1.0.0'
+        default: '1.2.0'
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
       - name: Check the version and the signing key
         run: |
           if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Use a version like 1.0.0"
+            echo "Use a version like 1.2.0"
             exit 1
           fi
           if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
@@ -47,6 +47,9 @@ jobs:
       - name: Build the web app
         run: npm run build
         env:
+          VITE_BUILD: ${{ github.run_number }}
+          VITE_VERSION: ${{ inputs.version }}
+          VITE_CHANNEL: release
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
@@ -59,6 +62,33 @@ jobs:
           npx --yes @capacitor/assets generate --android \
             --iconBackgroundColor '#07040f' --iconBackgroundColorDark '#07040f' \
             --splashBackgroundColor '#07040f' --splashBackgroundColorDark '#07040f'
+
+      - name: Fix the adaptive icon background
+        run: |
+          node <<'EOF3'
+          const fs = require('fs');
+          const path = require('path');
+          const res = 'android/app/src/main/res';
+          const hasBg = fs.readdirSync(res).some(
+            (d) => d.startsWith('mipmap') &&
+              fs.readdirSync(path.join(res, d)).some((f) => f.startsWith('ic_launcher_background.'))
+          );
+          if (!hasBg) {
+            for (const d of fs.readdirSync(res).filter((x) => x.startsWith('mipmap-anydpi'))) {
+              for (const f of fs.readdirSync(path.join(res, d)).filter((x) => x.endsWith('.xml'))) {
+                const p = path.join(res, d, f);
+                const xml = fs.readFileSync(p, 'utf8').replace(/@mipmap\/ic_launcher_background/g, '@color/ic_launcher_background');
+                fs.writeFileSync(p, xml);
+                console.log('patched', p);
+              }
+            }
+            fs.writeFileSync(
+              path.join(res, 'values', 'ic_launcher_background.xml'),
+              '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#07040F</color>\n</resources>\n'
+            );
+          } else {
+            console.log('Background images exist, nothing to fix');
+          }
 
       - name: Make the Android 12+ splash use the NexusHD logo
         run: |
@@ -79,7 +109,6 @@ jobs:
           } else {
             console.log('Launch theme not found, skipping');
           }
-          console.log(xml);
           EOF2
 
       - name: Set permissions and app settings
@@ -103,6 +132,21 @@ jobs:
           fs.writeFileSync(file, xml);
           EOF
 
+      - name: Notification icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cat > android/app/src/main/res/drawable/ic_stat_nexus.xml <<'EOF4'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path
+                  android:fillColor="#FFFFFFFF"
+                  android:pathData="M8,5v14l11,-7z" />
+          </vector>
+          EOF4
+
       - name: Set the version
         run: |
           sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" android/app/build.gradle
@@ -124,6 +168,8 @@ jobs:
           "$BT/zipalign" -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
           "$BT/apksigner" sign --ks nexushd.keystore --ks-key-alias nexushd --ks-pass env:KS_PASS --key-pass env:KS_PASS --out "NexusHD-$VERSION.apk" aligned.apk
           "$BT/apksigner" verify "NexusHD-$VERSION.apk"
+          # the same file under a fixed name, so one download link always works
+          cp "NexusHD-$VERSION.apk" NexusHD.apk
           sha256sum "NexusHD-$VERSION.apk" > "NexusHD-$VERSION.apk.sha256"
           rm -f nexushd.keystore aligned.apk
 
@@ -131,8 +177,14 @@ jobs:
         with:
           tag_name: v${{ inputs.version }}
           name: NexusHD ${{ inputs.version }}
+          body: |
+            Build ${{ github.run_number }}
+
+            NexusHD ${{ inputs.version }} for Android. Download NexusHD.apk below and open it to install. If NexusHD is already installed, it updates in place and keeps your downloads and account.
           generate_release_notes: true
+          prerelease: false
           make_latest: true
           files: |
+            NexusHD.apk
             NexusHD-${{ inputs.version }}.apk
             NexusHD-${{ inputs.version }}.apk.sha256
