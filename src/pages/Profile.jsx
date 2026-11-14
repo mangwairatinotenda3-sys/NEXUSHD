@@ -180,7 +180,7 @@ function ForgotForm({ initialEmail, onBack, requestPasswordReset }) {
       )}
     </div>
   );
-}
+      }
 
 /* ---------- Sign in / create account ---------- */
 
@@ -192,6 +192,7 @@ function AuthForm({
   initialInfo,
   initialError,
 }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState('signin');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -382,6 +383,36 @@ function AuthForm({
         <button className="btn-primary auth-submit" type="submit" disabled={busy}>
           {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
+
+        {mode === 'signup' && (
+          <p
+            style={{
+              margin: '14px 4px 0',
+              fontSize: 12.5,
+              lineHeight: 1.55,
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+            }}
+          >
+            By creating an account you agree to the{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/legal/terms')}
+              style={{ color: 'var(--primary-bright)', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Terms of Use
+            </button>{' '}
+            and{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/legal/privacy')}
+              style={{ color: 'var(--primary-bright)', fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Privacy Policy
+            </button>
+            .
+          </p>
+        )}
       </form>
     </div>
   );
@@ -459,7 +490,7 @@ function NewPasswordScreen({ onSave, onCancel }) {
       </form>
     </div>
   );
-            }
+}
 
 /* ---------- Sheets ---------- */
 
@@ -611,7 +642,7 @@ async function toSquareJpeg(file, size = 320) {
   } finally {
     URL.revokeObjectURL(url);
   }
-}
+            }
 
 function PhotoSheet({ hasPhoto, initial, onSave, onRemove, onClose }) {
   const fileRef = useRef(null);
@@ -764,7 +795,7 @@ function DeleteAccountSheet({ onDelete, onClose }) {
       </form>
     </div>
   );
-}
+    }
 
 /* ---------- Page ---------- */
 
