@@ -14,6 +14,7 @@
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.0",
     "@capacitor/local-notifications": "^7.0.0",
+    "@capacitor/screen-orientation": "^7.0.0",
     "@capacitor/share": "^7.0.0",
     "@capacitor/splash-screen": "^7.0.0",
     "@capacitor/status-bar": "^7.0.0",
@@ -28,4 +29,4 @@
     "@vitejs/plugin-react": "^4.3.3",
     "vite": "^5.4.10"
   }
-}
+  }
