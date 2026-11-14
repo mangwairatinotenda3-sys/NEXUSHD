@@ -1,8 +1,10 @@
 /* ---------- Film page (opens when you tap a free film) ----------
    Full screen, like a movie app: a big poster at the top, the details
-   scroll, and Play / Download stay pinned at the bottom. */
+   scroll, and Play / Download stay pinned at the bottom.
+   It is attached to the app frame (.app-shell), so it is exactly the size
+   of the visible screen. */
 .sheet-backdrop.film-page {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 200;
   display: block;
@@ -276,4 +278,4 @@ body.film-open .bottom-nav {
   border-radius: 6px;
   background: var(--primary-bright);
   transition: width 0.25s;
-}
+   }
