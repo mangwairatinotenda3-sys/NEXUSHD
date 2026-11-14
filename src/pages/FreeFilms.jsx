@@ -125,11 +125,11 @@ export default function FreeFilms() {
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  // The film page covers the whole screen, so hide the bottom tab bar while it's open
+  // No bottom tab bar on the Free Films page
   useEffect(() => {
-    document.body.classList.toggle('film-open', Boolean(selected));
-    return () => document.body.classList.remove('film-open');
-  }, [selected]);
+    document.body.classList.add('hide-nav');
+    return () => document.body.classList.remove('hide-nav');
+  }, []);
 
   const showToast = (message) => {
     setToast(message);
@@ -634,23 +634,25 @@ export default function FreeFilms() {
         document.querySelector('.app-shell') || document.body
       )}
 
-      {player && (
-        <VideoPlayer
-          title={player.film.title}
-          src={player.src}
-          loading={player.loading}
-          startAt={progress[player.film.id] || 0}
-          subtitles={player.subtitles || []}
-          fallbackHref={archivePage(player.film.id)}
-          onClose={closePlayer}
-          onProgress={(s) => {
-            saveProgress(player.film.id, s);
-            recordFilmProgress(player.film, s);
-          }}
-        />
-      )}
+      {player &&
+        createPortal(
+          <VideoPlayer
+            title={player.film.title}
+            src={player.src}
+            loading={player.loading}
+            startAt={progress[player.film.id] || 0}
+            subtitles={player.subtitles || []}
+            fallbackHref={archivePage(player.film.id)}
+            onClose={closePlayer}
+            onProgress={(s) => {
+              saveProgress(player.film.id, s);
+              recordFilmProgress(player.film, s);
+            }}
+          />,
+          document.querySelector('.app-shell') || document.body
+        )}
 
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
   );
-            }
+                      }
