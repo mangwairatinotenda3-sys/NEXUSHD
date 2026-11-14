@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -427,7 +428,7 @@ export default function FreeFilms() {
         />
       )}
 
-            {selected && (
+            {selected && createPortal(
         <div className="sheet-backdrop film-page" onClick={() => setSelected(null)}>
           <div className="fp" onClick={(e) => e.stopPropagation()}>
             <div className="fp-scroll">
@@ -629,7 +630,8 @@ export default function FreeFilms() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.querySelector('.app-shell') || document.body
       )}
 
       {player && (
@@ -651,4 +653,4 @@ export default function FreeFilms() {
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
   );
-                      }
+            }
