@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Moon, Bell, Info, ChevronRight, Search, Eye, RefreshCw } from 'lucide-react';
+import {
+  Moon,
+  Bell,
+  Info,
+  ChevronRight,
+  Search,
+  Eye,
+  RefreshCw,
+  ShieldCheck,
+  FileText,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import BrandMark from '../components/BrandMark.jsx';
 import { UpdateSheet } from '../components/UpdatePrompt.jsx';
@@ -11,6 +22,7 @@ import { APP_VERSION, BUILD, checkForUpdate, updatesSupported } from '../service
 import '../styles/update.css';
 
 export default function Settings() {
+  const navigate = useNavigate();
   const { theme, setTheme, notifications, setNotifications } = useApp();
   const [recent, setRecent] = useLocalStorage('nexushd:recent-searches', []);
   const history = useHistory();
@@ -103,6 +115,18 @@ export default function Settings() {
           </div>
         )}
 
+        <button className="row" onClick={() => navigate('/legal/privacy')}>
+          <ShieldCheck size={22} />
+          <span className="row-label">Privacy Policy</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+
+        <button className="row" onClick={() => navigate('/legal/terms')}>
+          <FileText size={22} />
+          <span className="row-label">Terms of Use</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+
         <div className="row">
           <span style={{ width: 22 }} />
           <span className="row-label">Version</span>
@@ -167,4 +191,4 @@ export default function Settings() {
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
   );
-}
+      }
