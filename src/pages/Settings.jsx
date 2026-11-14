@@ -9,6 +9,9 @@ import {
   RefreshCw,
   ShieldCheck,
   FileText,
+  UserPlus,
+  Sparkles,
+  Compass,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
@@ -18,6 +21,7 @@ import useLocalStorage from '../hooks/useLocalStorage.js';
 import useHistory from '../hooks/useHistory.js';
 import { useApp } from '../context/AppContext.jsx';
 import { ensureNotificationPermission } from '../services/notify.js';
+import { openWelcome } from '../services/welcome.js';
 import { APP_VERSION, BUILD, checkForUpdate, updatesSupported } from '../services/update.js';
 import '../styles/update.css';
 
@@ -147,6 +151,26 @@ export default function Settings() {
       </div>
 
       <div className="card">
+        <button className="row" onClick={() => openWelcome('invite')}>
+          <UserPlus size={22} />
+          <span className="row-label">Invite friends</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+
+        <button className="row" onClick={() => openWelcome('news')}>
+          <Sparkles size={22} />
+          <span className="row-label">What's new</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+
+        <button className="row" onClick={() => openWelcome('welcome')}>
+          <Compass size={22} />
+          <span className="row-label">Welcome tour</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+      </div>
+
+      <div className="card">
         <button
           className="row"
           disabled={recent.length === 0}
@@ -191,4 +215,4 @@ export default function Settings() {
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
   );
-      }
+    }
