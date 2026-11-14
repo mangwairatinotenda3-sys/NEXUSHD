@@ -1,3 +1,5 @@
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+
 /* Subtitles for Free Films. Archive.org films may come with .srt or .vtt
    files. Browsers only show WebVTT, so .srt files are converted here. */
 
@@ -73,22 +75,42 @@ function decode(buffer) {
 
 /* SRT -> WebVTT. WebVTT text passes through. */
 export function toVtt(text) {
-  const clean = String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
+  const clean = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n').trim();
   if (!clean.includes('-->')) throw new Error('Not a subtitle file');
   if (/^WEBVTT/.test(clean)) return clean;
   return `WEBVTT\n\n${clean.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')}\n`;
+}
+
+/* In the Android app the file is fetched with the phone's own network layer,
+   which is not blocked by the browser's cross-site rules. */
+async function fetchBuffer(url, signal) {
+  if (Capacitor.isNativePlatform()) {
+    const res = await CapacitorHttp.request({
+      url,
+      method: 'GET',
+      responseType: 'blob',
+      connectTimeout: 15000,
+      readTimeout: 15000,
+    });
+    if (res.status < 200 || res.status >= 300) throw new Error('Subtitles unavailable');
+    const binary = atob(res.data || '');
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error('Subtitles unavailable');
+  return res.arrayBuffer();
 }
 
 export async function fetchSubtitleVtt(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const res = await fetch(url, { signal: controller.signal });
-    if (!res.ok) throw new Error('Subtitles unavailable');
-    const buffer = await res.arrayBuffer();
+    const buffer = await fetchBuffer(url, controller.signal);
     if (buffer.byteLength > MAX_BYTES) throw new Error('Subtitles too large');
     return toVtt(decode(buffer));
   } finally {
     clearTimeout(timer);
   }
-}
+   }
