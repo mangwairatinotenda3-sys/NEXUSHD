@@ -9,6 +9,7 @@ import Library from './pages/Library.jsx';
 import Downloads from './pages/Downloads.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
+import Legal from './pages/Legal.jsx';
 
 export default function App() {
   return (
@@ -24,9 +25,10 @@ export default function App() {
           <Route path="/downloads" element={<Downloads />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/legal/:doc" element={<Legal />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </AuthProvider>
   );
-}
+            }
