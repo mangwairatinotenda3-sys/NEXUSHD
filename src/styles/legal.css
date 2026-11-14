@@ -1,0 +1,75 @@
+/* ---------- Privacy Policy and Terms of Use ---------- */
+.legal-tabs {
+  display: flex;
+  justify-content: center;
+  padding: 0 20px 6px;
+}
+
+.legal-tabs .segmented {
+  width: 100%;
+  max-width: 320px;
+}
+
+.legal-tabs .segmented button {
+  flex: 1;
+}
+
+.legal {
+  padding: 8px 20px calc(var(--safe-bottom) + 40px);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.legal-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.legal-short {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  border: 1px solid var(--card-border);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.legal h2 {
+  margin: 26px 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.legal p,
+.legal li {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.legal p {
+  margin: 0 0 10px;
+}
+
+.legal ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.legal li {
+  margin-bottom: 8px;
+}
+
+.legal b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legal a {
+  color: var(--primary-bright);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
