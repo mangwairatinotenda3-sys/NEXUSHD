@@ -1,19 +1,25 @@
 import { useSyncExternalStore } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { fetchSubtitleVtt } from './subtitles.js';
 import { ensureNotificationPermission, notifyDownload } from './notify.js';
 
 /* Offline downloads. Files are saved in the browser's storage (IndexedDB) in
-   4 MB pieces, so a download can be paused and resumed. On the web a download
-   only runs while NexusHD is open. A download that was interrupted (app
-   closed, connection lost) carries on by itself when NexusHD is opened again,
-   up to three tries in a row, unless you paused it yourself. */
+   4 MB pieces, so a download can be paused and resumed. A download only runs
+   while NexusHD is open. A download that was interrupted (app closed,
+   connection lost) carries on by itself when NexusHD is opened again, up to
+   three tries in a row, unless you paused it yourself.
+
+   In the Android app the pieces are requested with the phone's own network
+   layer (CapacitorHttp). A browser would block this: the Internet Archive does
+   not allow other websites to read its files. A normal website cannot get
+   around that, so downloads are for the Android app. */
 
 const DB_NAME = 'nexushd-offline';
 const CHUNK_BYTES = 4 * 1024 * 1024;
 const MIRROR_KEY = 'nexushd:downloads';
 const MAX_AUTO_TRIES = 3;
+const NATIVE_CHUNK = 4 * 1024 * 1024;
 
 export const downloadsSupported = () =>
   typeof indexedDB !== 'undefined' &&
@@ -121,19 +127,111 @@ function patch(id, changes, persist = false) {
   return next;
 }
 
+const NO_CONNECTION = 'Could not download. Check your connection and try again.';
+
 function errorMessage(err) {
   const msg = String(err?.message || '');
   if (msg.startsWith('Not enough storage') || err?.name === 'QuotaExceededError') {
     return 'Not enough storage space on this device.';
   }
   if (msg.startsWith('The server')) return msg;
-  if (err instanceof TypeError) return 'Could not download. Check your connection and try again.';
+  if (Capacitor.isNativePlatform()) return NO_CONNECTION;
+  if (err instanceof TypeError) {
+    return navigator.onLine === false
+      ? NO_CONNECTION
+      : 'This browser blocked the download. Use the NexusHD Android app to download films.';
+  }
   return 'The download stopped. Try again.';
 }
 
-// a lost connection is worth trying again; a full phone or a refusing server is not
+// a lost connection is worth trying again; a full phone, a refusing server
+// or a blocking browser is not
 const isTransient = (message) =>
-  !(message.startsWith('Not enough storage') || message.startsWith('The server'));
+  !(
+    message.startsWith('Not enough storage') ||
+    message.startsWith('The server') ||
+    message.startsWith('This browser')
+  );
+
+async function ensureSpace(remaining) {
+  const estimate = await navigator.storage?.estimate?.();
+  if (estimate?.quota && remaining) {
+    const free = estimate.quota - (estimate.usage || 0);
+    if (free < remaining + 50 * 1024 * 1024) throw new Error('Not enough storage space');
+  }
+}
+
+const headerOf = (headers = {}, name) => {
+  const key = Object.keys(headers).find((k) => k.toLowerCase() === name);
+  return key ? String(headers[key]) : '';
+};
+
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/* Android app: asks for the file 4 MB at a time. Returns true when the whole
+   file is saved, false when it was paused or removed on the way. */
+async function downloadNative(id, controller) {
+  const first = records.get(id);
+  if (first?.size) await ensureSpace(first.size - first.stored);
+
+  let restarted = false;
+  for (;;) {
+    if (controller.signal.aborted) return false;
+    const cur = records.get(id);
+    if (!cur) return false;
+
+    const from = cur.stored;
+    const res = await CapacitorHttp.request({
+      url: cur.src,
+      method: 'GET',
+      headers: { Range: `bytes=${from}-${from + NATIVE_CHUNK - 1}` },
+      responseType: 'blob',
+      connectTimeout: 20000,
+      readTimeout: 60000,
+    });
+    if (controller.signal.aborted || !records.has(id)) return false;
+
+    if (res.status === 416) return true; // asked past the end: everything is saved
+    if (res.status !== 206 && res.status !== 200) {
+      throw new Error(`The server returned ${res.status}.`);
+    }
+
+    if (res.status === 200 && from > 0) {
+      // The server ignored the range, so start again from the beginning.
+      if (restarted) throw new Error('The server does not allow resuming this download.');
+      restarted = true;
+      await deleteChunks(id);
+      patch(id, { stored: 0, bytes: 0, chunks: 0 });
+      continue;
+    }
+
+    const bytes = base64ToBytes(res.data || '');
+    if (!bytes.length) return true;
+
+    const match = /\/(\d+)\s*$/.exec(headerOf(res.headers, 'content-range'));
+    const total = match ? Number(match[1]) : res.status === 200 ? bytes.length : cur.size;
+
+    const next = {
+      ...cur,
+      stored: cur.stored + bytes.length,
+      bytes: cur.stored + bytes.length,
+      chunks: cur.chunks + 1,
+      size: total || cur.size,
+      tries: 0,
+    };
+    await saveChunk(next, cur.chunks, new Blob([bytes], { type: 'video/mp4' }));
+    if (!records.has(id)) return false;
+    records.set(id, next);
+    emit();
+
+    if (total && next.stored >= total) return true;
+  }
+}
 
 async function run(id) {
   if (!records.get(id) || controllers.has(id)) return;
@@ -164,7 +262,9 @@ async function run(id) {
     emit();
   };
 
-  try {
+  // A normal browser: streams the file. Many sites (including the Internet
+  // Archive) do not allow this from another website, so it can be blocked.
+  const viaWeb = async () => {
     const start = records.get(id);
     const headers = start.stored > 0 ? { Range: `bytes=${start.stored}-` } : {};
     const res = await fetch(start.src, { headers, signal: controller.signal });
@@ -181,13 +281,7 @@ async function run(id) {
     const total = length ? current.stored + length : current.size;
     if (total && total !== current.size) patch(id, { size: total });
 
-    const estimate = await navigator.storage?.estimate?.();
-    if (estimate?.quota && total) {
-      const free = estimate.quota - (estimate.usage || 0);
-      if (free < total - current.stored + 50 * 1024 * 1024) {
-        throw new Error('Not enough storage space');
-      }
-    }
+    await ensureSpace(total ? total - current.stored : 0);
 
     const reader = res.body.getReader();
     for (;;) {
@@ -205,6 +299,14 @@ async function run(id) {
       }
     }
     await flush();
+  };
+
+  try {
+    if (Capacitor.isNativePlatform()) {
+      if (!(await downloadNative(id, controller))) return;
+    } else {
+      await viaWeb();
+    }
     const done = records.get(id);
     if (done) {
       patch(
@@ -241,7 +343,7 @@ async function run(id) {
   } finally {
     controllers.delete(id);
   }
-   }
+}
 
 async function init() {
   if (!downloadsSupported()) {
@@ -387,4 +489,4 @@ if (typeof document !== 'undefined') {
 export default function useDownloads() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   return { items: snapshot.items, loading: snapshot.loading, supported: downloadsSupported() };
-     }
+  }
