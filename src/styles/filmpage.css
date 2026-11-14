@@ -13,9 +13,11 @@
   animation: fp-in 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
-/* the page covers the whole screen, so the bottom tab bar steps aside */
-body.film-open .bottom-nav {
-  display: none;
+/* the video player also lives inside the app frame, so it fits the screen exactly */
+.app-shell > .player {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
 }
 
 @keyframes fp-in {
@@ -278,4 +280,4 @@ body.film-open .bottom-nav {
   border-radius: 6px;
   background: var(--primary-bright);
   transition: width 0.25s;
-   }
+                              }
