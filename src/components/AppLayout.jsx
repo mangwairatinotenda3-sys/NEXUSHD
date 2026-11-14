@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Wifi, WifiOff } from 'lucide-react';
 import BottomNav from './BottomNav.jsx';
 import UpdatePrompt from './UpdatePrompt.jsx';
+import FirstRun from './FirstRun.jsx';
 import useOnline from '../hooks/useOnline.js';
 import useDownloads, { pauseDownload, resumeDownload } from '../services/downloadManager.js';
 import '../styles/offline.css';
@@ -100,6 +101,7 @@ export default function AppLayout() {
       </main>
       {showNav && <BottomNav />}
       <UpdatePrompt />
+      <FirstRun />
     </div>
   );
-      }
+    }
