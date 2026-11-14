@@ -2,10 +2,18 @@
    Full screen, like a movie app: a big poster at the top, the details
    scroll, and Play / Download stay pinned at the bottom. */
 .sheet-backdrop.film-page {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
   display: block;
   padding: 0;
   background: var(--bg);
   animation: fp-in 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* the page covers the whole screen, so the bottom tab bar steps aside */
+body.film-open .bottom-nav {
+  display: none;
 }
 
 @keyframes fp-in {
@@ -268,4 +276,4 @@
   border-radius: 6px;
   background: var(--primary-bright);
   transition: width 0.25s;
-                          }
+}
