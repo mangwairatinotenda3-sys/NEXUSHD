@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header.jsx';
+import { FEEDBACK_EMAIL } from '../services/feedback.js';
 import '../styles/legal.css';
 
 const UPDATED = '14 November 2026';
@@ -102,8 +103,9 @@ function Privacy() {
 
       <h2>8. Contact</h2>
       <p>
-        Questions or requests about your information: <External href={ISSUES}>open an issue</External>{' '}
-        on our project page.
+        Questions or requests about your information: email{' '}
+        <a href={`mailto:${FEEDBACK_EMAIL}`}>{FEEDBACK_EMAIL}</a>, or{' '}
+        <External href={ISSUES}>open an issue</External> on our project page.
       </p>
     </>
   );
@@ -166,8 +168,9 @@ function Terms() {
       <h2>7. Rights holders</h2>
       <p>
         If you own the rights to a film and believe it should not be listed in the app, please{' '}
-        <External href={ISSUES}>tell us</External> with a link to the film, and we will remove it
-        from the app promptly.
+        email <a href={`mailto:${FEEDBACK_EMAIL}`}>{FEEDBACK_EMAIL}</a> (or{' '}
+        <External href={ISSUES}>open an issue</External>) with a link to the film, and we will
+        remove it from the app promptly.
       </p>
 
       <h2>8. Changes</h2>
@@ -178,7 +181,8 @@ function Terms() {
 
       <h2>9. Contact</h2>
       <p>
-        <External href={ISSUES}>Open an issue</External> on our project page.
+        Email <a href={`mailto:${FEEDBACK_EMAIL}`}>{FEEDBACK_EMAIL}</a> or{' '}
+        <External href={ISSUES}>open an issue</External> on our project page.
       </p>
     </>
   );
@@ -229,4 +233,4 @@ export default function Legal() {
       </article>
     </div>
   );
-}
+        }
