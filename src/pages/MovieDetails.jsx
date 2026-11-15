@@ -18,6 +18,7 @@ import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import EpisodeList from '../components/EpisodeList.jsx';
+import WhereToWatch from '../components/WhereToWatch.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import TrailerPlayer from '../components/TrailerPlayer.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
@@ -343,6 +344,8 @@ export default function MovieDetails({ kind = 'movie' }) {
           </button>
         </div>
 
+        <WhereToWatch key={`${kind}-${m.id}`} kind={kind} id={m.id} />
+
         {isTv && (
           <EpisodeList
             key={m.id}
@@ -416,4 +419,4 @@ export default function MovieDetails({ kind = 'movie' }) {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-  }
+    }
