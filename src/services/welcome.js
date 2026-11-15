@@ -80,8 +80,8 @@ export const RELEASES = [
 
 export const releaseFor = (version) => RELEASES.find((r) => r.version === version) || null;
 
-/* Lets Settings open the welcome tour, the news sheet or the invite sheet,
-   which live in the app shell. what: 'welcome' | 'news' | 'invite' */
+/* Lets Settings open the welcome tour, the news sheet, the invite sheet or the feedback sheet,
+   which live in the app shell. what: 'welcome' | 'news' | 'invite' | 'feedback' */
 export const openWelcome = (what) =>
   window.dispatchEvent(new CustomEvent(EVENT, { detail: what }));
 
