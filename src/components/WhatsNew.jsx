@@ -1,10 +1,14 @@
 import {
+  Compass,
   Download,
   Film,
+  MessageSquare,
   Play,
   ScreenShare,
   ShieldCheck,
   Sparkles,
+  Tv2,
+  User,
   Users,
 } from 'lucide-react';
 import '../styles/onboarding.css';
@@ -16,6 +20,10 @@ const ICONS = {
   film: Film,
   shield: ShieldCheck,
   users: Users,
+  tv: Tv2,
+  compass: Compass,
+  message: MessageSquare,
+  user: User,
 };
 
 export default function WhatsNew({ release, onClose }) {
@@ -53,4 +61,4 @@ export default function WhatsNew({ release, onClose }) {
       </div>
     </div>
   );
-      }
+  }
