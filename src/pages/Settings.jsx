@@ -12,6 +12,7 @@ import {
   UserPlus,
   Sparkles,
   Compass,
+  MessageSquare,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
@@ -157,6 +158,12 @@ export default function Settings() {
           <ChevronRight size={20} className="muted" />
         </button>
 
+        <button className="row" onClick={() => openWelcome('feedback')}>
+          <MessageSquare size={22} />
+          <span className="row-label">Send feedback</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+
         <button className="row" onClick={() => openWelcome('news')}>
           <Sparkles size={22} />
           <span className="row-label">What's new</span>
@@ -215,4 +222,4 @@ export default function Settings() {
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
   );
-    }
+  }
