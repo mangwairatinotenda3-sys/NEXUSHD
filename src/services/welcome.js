@@ -41,6 +41,37 @@ export const markVersionSeen = () => write(VERSION_KEY, APP_VERSION);
    each release that should show the "What's new" sheet once. */
 export const RELEASES = [
   {
+    version: '1.2.0',
+    title: 'Welcome, where to watch, feedback',
+    highlights: [
+      {
+        icon: 'tv',
+        title: 'Where to watch',
+        text: 'Every movie and series now shows which streaming services have it in your country.',
+      },
+      {
+        icon: 'compass',
+        title: 'Welcome tour',
+        text: 'New screens that show you around. You can open them again from Settings.',
+      },
+      {
+        icon: 'message',
+        title: 'Send feedback',
+        text: 'Found a bug or have an idea? Tell us from Settings, it only takes a minute.',
+      },
+      {
+        icon: 'users',
+        title: 'Invite friends',
+        text: 'Share NexusHD with one tap, from Settings or the welcome tour.',
+      },
+      {
+        icon: 'user',
+        title: 'Profile photo viewer',
+        text: 'Tap your picture on the Profile screen to see it full size or change it.',
+      },
+    ],
+  },
+  {
     version: '1.1.0',
     title: 'A better player, faster downloads',
     highlights: [
