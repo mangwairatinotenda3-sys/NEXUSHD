@@ -173,7 +173,18 @@ jobs:
           sha256sum "NexusHD-$VERSION.apk" > "NexusHD-$VERSION.apk.sha256"
           rm -f nexushd.keystore aligned.apk
 
+      - name: Keep a copy of the APK on this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexusHD-${{ inputs.version }}
+          path: |
+            NexusHD-${{ inputs.version }}.apk
+            NexusHD-${{ inputs.version }}.apk.sha256
+          retention-days: 30
+          if-no-files-found: error
+
       - uses: softprops/action-gh-release@v2
+        id: release
         with:
           tag_name: v${{ inputs.version }}
           name: NexusHD ${{ inputs.version }}
@@ -188,3 +199,27 @@ jobs:
             NexusHD.apk
             NexusHD-${{ inputs.version }}.apk
             NexusHD-${{ inputs.version }}.apk.sha256
+
+      - name: Show the download links
+        run: |
+          REPO="${{ github.repository }}"
+          OWNER="${REPO%%/*}"
+          NAME="${REPO##*/}"
+          {
+            echo "## NexusHD $VERSION is published"
+            echo
+            echo "**Release page:** ${{ steps.release.outputs.url }}"
+            echo
+            echo "**Direct download (always the newest version):**"
+            echo "https://github.com/$REPO/releases/latest/download/NexusHD.apk"
+            echo
+            echo "**This exact version:**"
+            echo "https://github.com/$REPO/releases/download/v$VERSION/NexusHD.apk"
+            echo
+            echo "**Landing page to share with friends:**"
+            echo "https://$OWNER.github.io/$NAME/get.html"
+            echo
+            echo "The APK is also attached to this run under Artifacts for 30 days."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Release page: ${{ steps.release.outputs.url }}"
+          echo "Direct download: https://github.com/$REPO/releases/latest/download/NexusHD.apk"
