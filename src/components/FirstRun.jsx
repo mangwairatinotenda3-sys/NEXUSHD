@@ -10,6 +10,7 @@ import {
   markOnboarded,
   markVersionSeen,
   onWelcomeEvent,
+  RELEASES,
   releaseFor,
 } from '../services/welcome.js';
 
@@ -61,10 +62,10 @@ export default function FirstRun() {
     );
   }
   if (view === 'news') {
-    const release = releaseFor(APP_VERSION) || releaseFor('1.1.0');
+    const release = releaseFor(APP_VERSION) || RELEASES[0];
     return release ? <WhatsNew release={release} onClose={closeNews} /> : null;
   }
   if (view === 'invite') return <InviteSheet onClose={() => setView(null)} />;
   if (view === 'feedback') return <FeedbackSheet onClose={() => setView(null)} />;
   return null;
-            }
+}
