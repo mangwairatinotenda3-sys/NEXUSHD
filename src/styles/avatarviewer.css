@@ -1,0 +1,97 @@
+/* ---------- Profile picture viewer ---------- */
+.avatar-viewer {
+  z-index: 60;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  background: rgba(4, 2, 10, 0.92);
+}
+
+.av-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.av-close:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.av-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(84vw, 360px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 110px;
+  font-weight: 800;
+  color: var(--primary-bright);
+  background: var(--bg-elevated);
+  border: 4px solid rgba(168, 85, 247, 0.7);
+  box-shadow: 0 0 60px rgba(124, 58, 237, 0.45);
+  animation: av-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.av-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes av-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+.av-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.av-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+}
+
+.av-change:active {
+  transform: scale(0.97);
+}
+
+/* the picture on the Profile screen is tappable */
+.avatar-ring[role='button'] {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.avatar-ring[role='button']:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .av-photo {
+    animation: none;
+  }
+  }
