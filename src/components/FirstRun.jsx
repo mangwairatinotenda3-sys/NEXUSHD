@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Onboarding from './Onboarding.jsx';
 import WhatsNew from './WhatsNew.jsx';
 import InviteSheet from './InviteSheet.jsx';
+import FeedbackSheet from './FeedbackSheet.jsx';
 import { APP_VERSION } from '../services/update.js';
 import {
   hasOnboarded,
@@ -16,9 +17,10 @@ import {
    - the welcome screens, the first time the app is opened
    - "What's new", once after the app was updated to a version that has notes
    - the invite sheet, when asked for (Settings or the last welcome screen)
+   - the feedback sheet, when asked for (Settings)
    Settings can also reopen any of them. */
 export default function FirstRun() {
-  const [view, setView] = useState(null); // 'welcome' | 'news' | 'invite'
+  const [view, setView] = useState(null); // 'welcome' | 'news' | 'invite' | 'feedback'
 
   useEffect(() => {
     // never cover a password-reset link, a sign-in link or the legal pages
@@ -63,5 +65,6 @@ export default function FirstRun() {
     return release ? <WhatsNew release={release} onClose={closeNews} /> : null;
   }
   if (view === 'invite') return <InviteSheet onClose={() => setView(null)} />;
+  if (view === 'feedback') return <FeedbackSheet onClose={() => setView(null)} />;
   return null;
-  }
+            }
