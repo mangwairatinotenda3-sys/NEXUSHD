@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header.jsx';
 import BrandMark from '../components/BrandMark.jsx';
+import AvatarViewer from '../components/AvatarViewer.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -180,7 +181,7 @@ function ForgotForm({ initialEmail, onBack, requestPasswordReset }) {
       )}
     </div>
   );
-      }
+                }
 
 /* ---------- Sign in / create account ---------- */
 
@@ -416,7 +417,7 @@ function AuthForm({
       </form>
     </div>
   );
-}
+        }
 
 /* ---------- New password (from the reset link) ---------- */
 
@@ -642,7 +643,7 @@ async function toSquareJpeg(file, size = 320) {
   } finally {
     URL.revokeObjectURL(url);
   }
-            }
+}
 
 function PhotoSheet({ hasPhoto, initial, onSave, onRemove, onClose }) {
   const fileRef = useRef(null);
@@ -795,7 +796,7 @@ function DeleteAccountSheet({ onDelete, onClose }) {
       </form>
     </div>
   );
-    }
+            }
 
 /* ---------- Page ---------- */
 
@@ -824,6 +825,7 @@ export default function Profile() {
   const [confirmOut, setConfirmOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [sheet, setSheet] = useState(null); // 'name' | 'photo' | 'password' | 'delete'
+  const [viewer, setViewer] = useState(false);
   const [farewell, setFarewell] = useState('');
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
@@ -923,7 +925,16 @@ export default function Profile() {
 
       <div className="profile-hero">
         <div className="avatar-wrap">
-          <div className="avatar-ring">
+          <div
+            className="avatar-ring"
+            role="button"
+            tabIndex={0}
+            aria-label="View profile photo"
+            onClick={() => setViewer(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') setViewer(true);
+            }}
+          >
             <div className="avatar">
               <span>{name.charAt(0).toUpperCase()}</span>
               {avatarUrl && (
@@ -1002,6 +1013,18 @@ export default function Profile() {
           Sign Out
         </button>
       </div>
+
+      {viewer && (
+        <AvatarViewer
+          name={name}
+          avatarUrl={avatarUrl}
+          onClose={() => setViewer(false)}
+          onChange={() => {
+            setViewer(false);
+            setSheet('photo');
+          }}
+        />
+      )}
 
       {sheet === 'name' && (
         <EditNameSheet current={name} onSave={updateUsername} onClose={() => setSheet(null)} />
