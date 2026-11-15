@@ -60,6 +60,9 @@ export const tmdb = {
   tvSimilar: async (id) => mapResults(await tmdbRequest(`tv/${id}/similar`), asTv),
   // one season with all its episodes
   tvSeason: (id, season) => tmdbRequest(`tv/${id}/season/${season}`),
+
+  // where a movie or series can be watched, for every country (kind: 'movie' | 'tv')
+  watchProviders: (kind, id) => tmdbRequest(`${kind}/${id}/watch/providers`),
 };
 
 export function imageUrl(path, size = 'w500') {
@@ -92,4 +95,4 @@ export function useMovies(fetcher, deps = []) {
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
   return { ...state, reload };
-  }
+                          }
