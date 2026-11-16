@@ -5,21 +5,27 @@ import { fetchSubtitleVtt } from './subtitles.js';
 import { ensureNotificationPermission, notifyDownload } from './notify.js';
 
 /* Offline downloads. Files are saved in the browser's storage (IndexedDB) in
-   4 MB pieces, so a download can be paused and resumed. A download only runs
+   pieces, so a download can be paused and resumed. A download only runs
    while NexusHD is open. A download that was interrupted (app closed,
    connection lost) carries on by itself when NexusHD is opened again, up to
    three tries in a row, unless you paused it yourself.
 
-   In the Android app the pieces are requested with the phone's own network
-   layer (CapacitorHttp). A browser would block this: the Internet Archive does
-   not allow other websites to read its files. A normal website cannot get
-   around that, so downloads are for the Android app. */
+   In the Android app the file is cut into 512 KB blocks and several blocks are
+   downloaded at the same time over separate connections, using the phone's
+   own network layer (CapacitorHttp). The Internet Archive limits the speed of
+   each single connection, so this is much faster than one connection. Each
+   finished block is saved straight away, so pausing or losing the connection
+   never loses finished blocks. A browser would block these requests: the
+   Internet Archive does not allow other websites to read its files, so
+   downloads are for the Android app. */
 
 const DB_NAME = 'nexushd-offline';
 const CHUNK_BYTES = 4 * 1024 * 1024;
 const MIRROR_KEY = 'nexushd:downloads';
 const MAX_AUTO_TRIES = 3;
-const NATIVE_CHUNK = 4 * 1024 * 1024;
+// Android: the file is split into blocks that are fetched in parallel.
+const BLOCK = 512 * 1024;
+const PARALLEL = 6;
 
 export const downloadsSupported = () =>
   typeof indexedDB !== 'undefined' &&
@@ -173,64 +179,172 @@ function base64ToBytes(text) {
   return bytes;
 }
 
-/* Android app: asks for the file 4 MB at a time. Returns true when the whole
-   file is saved, false when it was paused or removed on the way. */
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/* The Internet Archive answers with a redirect to the server that really holds
+   the file. Following it once here saves a round trip for every block. If
+   anything goes wrong we simply keep the original address. */
+async function resolveUrl(src) {
+  let url = src;
+  try {
+    for (let hop = 0; hop < 4; hop += 1) {
+      const res = await CapacitorHttp.request({
+        url,
+        method: 'GET',
+        headers: { Range: 'bytes=0-0' },
+        disableRedirects: true,
+        responseType: 'text',
+        connectTimeout: 20000,
+        readTimeout: 30000,
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const location = headerOf(res.headers, 'location');
+        if (!location) break;
+        url = new URL(location, url).toString();
+        continue;
+      }
+      break;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
+const isFatal = (err) =>
+  /^(The server|Not enough storage)/.test(String(err?.message || '')) ||
+  err?.name === 'QuotaExceededError';
+
+/* Android app. Returns true when the whole file is saved, false when it was
+   paused or removed on the way. */
 async function downloadNative(id, controller) {
-  const first = records.get(id);
-  if (first?.size) await ensureSpace(first.size - first.stored);
+  let rec = records.get(id);
+  if (!rec) return false;
 
-  let restarted = false;
-  for (;;) {
-    if (controller.signal.aborted) return false;
-    const cur = records.get(id);
-    if (!cur) return false;
+  // data saved by an older, one-piece-at-a-time version cannot be mixed with blocks
+  if (rec.block !== BLOCK && (rec.stored > 0 || rec.chunks > 0)) {
+    await deleteChunks(id);
+    rec = patch(id, { stored: 0, bytes: 0, chunks: 0, done: [], block: 0, blocks: 0 }, true);
+  }
 
-    const from = cur.stored;
+  const url = await resolveUrl(rec.src);
+  const resolved = url !== rec.src;
+  if (controller.signal.aborted || !records.has(id)) return false;
+
+  // Finished blocks are saved one after the other, so the saved record always
+  // lists every block that is really stored.
+  let chain = Promise.resolve();
+  const commit = (index, bytes, extra = {}) => {
+    const job = async () => {
+      const cur = records.get(id);
+      if (!cur) return;
+      const done = cur.done || [];
+      if (done.includes(index)) return;
+      const next = {
+        ...cur,
+        ...extra,
+        done: [...done, index],
+        stored: cur.stored + bytes.length,
+        bytes: cur.stored + bytes.length,
+        chunks: cur.chunks + 1,
+        tries: 0,
+      };
+      await saveChunk(next, index, new Blob([bytes], { type: 'video/mp4' }));
+      if (!records.has(id)) return;
+      records.set(id, next);
+      emit();
+    };
+    const p = chain.then(job);
+    chain = p.catch(() => {});
+    return p;
+  };
+
+  // block 0 first: it tells us how big the file is and shows progress quickly
+  if (!(rec.done || []).includes(0) || !rec.size || !rec.blocks) {
     const res = await CapacitorHttp.request({
-      url: cur.src,
+      url,
       method: 'GET',
-      headers: { Range: `bytes=${from}-${from + NATIVE_CHUNK - 1}` },
+      headers: { Range: `bytes=0-${BLOCK - 1}` },
       responseType: 'blob',
-      connectTimeout: 20000,
-      readTimeout: 60000,
+      connectTimeout: 30000,
+      readTimeout: 120000,
     });
     if (controller.signal.aborted || !records.has(id)) return false;
-
-    if (res.status === 416) return true; // asked past the end: everything is saved
     if (res.status !== 206 && res.status !== 200) {
       throw new Error(`The server returned ${res.status}.`);
     }
-
-    if (res.status === 200 && from > 0) {
-      // The server ignored the range, so start again from the beginning.
-      if (restarted) throw new Error('The server does not allow resuming this download.');
-      restarted = true;
-      await deleteChunks(id);
-      patch(id, { stored: 0, bytes: 0, chunks: 0 });
-      continue;
-    }
-
     const bytes = base64ToBytes(res.data || '');
-    if (!bytes.length) return true;
-
+    if (!bytes.length) throw new Error('The server returned an empty file.');
     const match = /\/(\d+)\s*$/.exec(headerOf(res.headers, 'content-range'));
-    const total = match ? Number(match[1]) : res.status === 200 ? bytes.length : cur.size;
-
-    const next = {
-      ...cur,
-      stored: cur.stored + bytes.length,
-      bytes: cur.stored + bytes.length,
-      chunks: cur.chunks + 1,
-      size: total || cur.size,
-      tries: 0,
-    };
-    await saveChunk(next, cur.chunks, new Blob([bytes], { type: 'video/mp4' }));
-    if (!records.has(id)) return false;
-    records.set(id, next);
-    emit();
-
-    if (total && next.stored >= total) return true;
+    const ranged = res.status === 206 && match;
+    const total = ranged ? Number(match[1]) : bytes.length;
+    await ensureSpace(total);
+    await commit(0, bytes, {
+      size: total,
+      block: BLOCK,
+      // a server that ignores ranges sends the whole file at once
+      blocks: ranged ? Math.ceil(total / BLOCK) : 1,
+    });
+    if (controller.signal.aborted || !records.has(id)) return false;
   }
+
+  rec = records.get(id);
+  const total = rec.size;
+  const blocks = rec.blocks;
+  const have = new Set(rec.done || []);
+  const queue = [];
+  for (let i = 0; i < blocks; i += 1) if (!have.has(i)) queue.push(i);
+
+  const getBlock = async (index) => {
+    const from = index * BLOCK;
+    const to = Math.min(total, from + BLOCK) - 1;
+    const res = await CapacitorHttp.request({
+      url,
+      method: 'GET',
+      headers: { Range: `bytes=${from}-${to}` },
+      responseType: 'blob',
+      connectTimeout: 30000,
+      readTimeout: 120000,
+    });
+    if (controller.signal.aborted || !records.has(id)) return;
+    if (res.status === 200) throw new Error('The server does not allow resuming this download.');
+    if (res.status !== 206) {
+      // an expired address, or a busy server, is worth another try
+      const again = res.status === 429 || res.status >= 500 || (resolved && res.status >= 400);
+      if (again) throw new Error('Busy');
+      throw new Error(`The server returned ${res.status}.`);
+    }
+    const bytes = base64ToBytes(res.data || '');
+    if (bytes.length !== to - from + 1) throw new Error('Incomplete block');
+    await commit(index, bytes);
+  };
+
+  let failure = null;
+  const worker = async () => {
+    while (!failure && !controller.signal.aborted) {
+      const index = queue.shift();
+      if (index === undefined) return;
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          await getBlock(index);
+          break;
+        } catch (err) {
+          if (controller.signal.aborted || !records.has(id)) return;
+          if (isFatal(err) || attempt >= 3) {
+            failure = failure || err;
+            return;
+          }
+          await wait(800 * attempt);
+        }
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, worker));
+  await chain;
+  if (controller.signal.aborted || !records.has(id)) return false;
+  if (failure) throw failure;
+  return (records.get(id).done || []).length >= blocks;
 }
 
 async function run(id) {
@@ -262,8 +376,6 @@ async function run(id) {
     emit();
   };
 
-  // A normal browser: streams the file. Many sites (including the Internet
-  // Archive) do not allow this from another website, so it can be blocked.
   const viaWeb = async () => {
     const start = records.get(id);
     const headers = start.stored > 0 ? { Range: `bytes=${start.stored}-` } : {};
@@ -401,6 +513,9 @@ export async function startDownload(film) {
     subs: [],
     resumeOnOpen: false,
     tries: 0,
+    block: 0,
+    blocks: 0,
+    done: [],
     createdAt: Date.now(),
   };
   records.set(rec.id, rec);
@@ -489,4 +604,4 @@ if (typeof document !== 'undefined') {
 export default function useDownloads() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   return { items: snapshot.items, loading: snapshot.loading, supported: downloadsSupported() };
-  }
+     }
