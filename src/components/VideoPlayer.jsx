@@ -8,6 +8,7 @@ import {
   Gauge,
   Lock,
   Pause,
+  PictureInPicture2,
   Play,
   RotateCcw,
   RotateCw,
@@ -22,6 +23,7 @@ import {
   lockPortrait,
   releaseOrientation,
 } from '../services/orientation.js';
+import { armPip, autoPipEnabled, enterPip, onPipChange, pipAvailable } from '../services/pip.js';
 import '../styles/player.css';
 
 const REASONS = {
@@ -131,6 +133,8 @@ export default function VideoPlayer({
   const [landscape, setLandscape] = useState(isLandscape);
   const [flash, setFlash] = useState(null); // { side, amount }
   const [note, setNote] = useState('');
+  const [pipOk, setPipOk] = useState(false);
+  const [inPip, setInPip] = useState(false);
 
   // subtitles
   const [menu, setMenu] = useState(null); // null | 'subs' | 'speed'
@@ -161,6 +165,35 @@ export default function VideoPlayer({
       releaseOrientation();
     };
   }, []);
+
+  // picture-in-picture: is it available, and is the small window open right now
+  useEffect(() => {
+    let off = false;
+    pipAvailable().then((ok) => {
+      if (!off) setPipOk(ok);
+    });
+    const stop = onPipChange((open) => {
+      setInPip(open);
+      if (open) {
+        setMenu(null);
+        return;
+      }
+      // the small window was closed with its X: the app is not on screen, so stop the film
+      setTimeout(() => {
+        if (document.visibilityState === 'hidden') videoRef.current?.pause();
+      }, 400);
+    });
+    return () => {
+      off = true;
+      stop();
+    };
+  }, []);
+
+  // while a film plays, leaving the app opens the small window by itself
+  useEffect(() => {
+    armPip(playing && autoPipEnabled());
+    return () => armPip(false);
+  }, [playing]);
 
   useEffect(() => {
     const query = window.matchMedia('(orientation: landscape)');
@@ -345,7 +378,7 @@ export default function VideoPlayer({
   };
 
   const onSeekDown = (e) => {
-    if (!duration) return;
+        if (!duration) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setScrub(ratioFrom(e));
   };
@@ -380,6 +413,12 @@ export default function VideoPlayer({
     setFill(next);
     showNote(next ? 'Fill screen' : 'Fit to screen');
     poke();
+  };
+
+  const miniPlayer = async () => {
+    const ok = await enterPip(videoRef.current);
+    if (!ok) showNote("Can't open the mini player here");
+    else poke();
   };
 
   const rotate = async () => {
@@ -441,7 +480,9 @@ export default function VideoPlayer({
   const uiHidden = !visible || locked;
 
   return (
-    <div className={`player pl ${uiHidden ? 'pl-ui-off' : ''} ${locked ? 'pl-locked' : ''}`}>
+    <div
+      className={`player pl ${uiHidden ? 'pl-ui-off' : ''} ${locked ? 'pl-locked' : ''} ${inPip ? 'pl-pip' : ''}`}
+    >
       {canPlay && (
         <>
           <video
@@ -597,6 +638,12 @@ export default function VideoPlayer({
                 {fill ? <Shrink size={21} /> : <Expand size={21} />}
                 <span>{fill ? 'Fit' : 'Fill'}</span>
               </button>
+              {pipOk && (
+                <button className="pl-act" onClick={miniPlayer} aria-label="Mini player">
+                  <PictureInPicture2 size={21} />
+                  <span>Mini</span>
+                </button>
+              )}
               <button className="pl-act" onClick={rotate} aria-label="Rotate the screen">
                 <RotateScreenIcon />
                 <span>Rotate</span>
@@ -692,4 +739,4 @@ export default function VideoPlayer({
       )}
     </div>
   );
-          }
+    }
