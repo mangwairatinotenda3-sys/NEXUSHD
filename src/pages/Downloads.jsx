@@ -2,15 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check,
+  CheckCheck,
   Download,
   ExternalLink,
   Film,
+  HardDrive,
   MoreVertical,
   Pause,
   Play,
   RotateCw,
   Trash2,
+  Wifi,
   WifiOff,
+  Zap,
 } from 'lucide-react';
 import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
@@ -19,13 +23,17 @@ import useLocalStorage from '../hooks/useLocalStorage.js';
 import useDownloads, {
   clearDownloads,
   getPlayableUrl,
+  getStorageInfo,
   pauseDownload,
+  removeCompleted,
   removeDownload,
   resumeDownload,
 } from '../services/downloadManager.js';
+import useNetwork, { setWifiOnly } from '../services/network.js';
 import { archivePage, archiveThumb, formatDuration } from '../services/archive.js';
 import { formatBytes } from '../utils/format.js';
 import '../styles/library.css';
+import '../styles/downloads.css';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -34,6 +42,123 @@ const FILTERS = [
 ];
 
 const percent = (rec) => (rec.size ? Math.min(100, Math.round((rec.bytes / rec.size) * 100)) : 0);
+
+const formatSpeed = (bytesPerSecond) => `${formatBytes(bytesPerSecond)}/s`;
+
+function formatLeft(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '';
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s left`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min left`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  return `${hours} h ${minutes} min left`;
+}
+
+// the line under a download that is not finished
+function progressLine(d, pct) {
+  if (d.status === 'error') return { text: d.error, bad: true };
+  if (d.waitingWifi) return { text: 'Waiting for Wi-Fi', wifi: true };
+  const amount = `${pct}% · ${formatBytes(d.bytes)}${d.size ? ` of ${formatBytes(d.size)}` : ''}`;
+  if (d.status === 'paused') return { text: `Paused · ${amount}` };
+  return { text: amount };
+}
+
+function speedLine(d) {
+  if (d.status !== 'downloading') return '';
+  if (!d.speed) return 'Connecting…';
+  const left = d.size ? formatLeft((d.size - d.bytes) / d.speed) : '';
+  return left ? `${formatSpeed(d.speed)} · ${left}` : formatSpeed(d.speed);
+}
+
+/* How much room downloads take and roughly how much is left. The free space is
+   an estimate that the phone gives to apps. */
+function useStorage(refreshKey) {
+  const [info, setInfo] = useState(null);
+  useEffect(() => {
+    let off = false;
+    getStorageInfo().then((result) => {
+      if (!off) setInfo(result);
+    });
+    return () => {
+      off = true;
+    };
+  }, [refreshKey]);
+  return info;
+}
+
+function StorageCard({ totalBytes, storage, active, speed, network }) {
+  const free = storage ? Math.max(0, storage.quota - storage.used) : 0;
+  const fill = storage && storage.quota ? Math.min(100, (storage.used / storage.quota) * 100) : 0;
+  const onMobile = network.connection === 'cellular';
+
+  return (
+    <section className="dl-card" aria-label="Storage and download settings">
+      <div className="dl-storage">
+        <span className="dl-ico">
+          <HardDrive size={20} />
+        </span>
+        <div className="dl-storage-text">
+          <b>{formatBytes(totalBytes)} of downloads</b>
+          <span>{storage ? `About ${formatBytes(free)} free on this device` : 'Saved on this device'}</span>
+        </div>
+      </div>
+      {storage && (
+        <div className="dl-bar" aria-hidden="true">
+          <span style={{ width: `${Math.max(fill, totalBytes ? 2 : 0)}%` }} />
+        </div>
+      )}
+
+      {active > 0 && (
+        <div className="dl-live">
+          <Zap size={15} />
+          <span>
+            {speed > 0
+              ? `Downloading at ${formatSpeed(speed)}`
+              : active === 1
+                ? 'Connecting…'
+                : 'Connecting…'}
+            {active > 1 ? ` · ${active} active` : ''}
+          </span>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="dl-wifi"
+        role="switch"
+        aria-checked={network.wifiOnly}
+        onClick={() => setWifiOnly(!network.wifiOnly)}
+      >
+        <Wifi size={20} />
+        <span className="dl-wifi-text">
+          <b>Download on Wi-Fi only</b>
+          <span>
+            {network.wifiOnly && onMobile
+              ? "You're on mobile data, so downloads are waiting"
+              : 'Saves your mobile data'}
+          </span>
+        </span>
+        <span className={`switch ${network.wifiOnly ? 'on' : ''}`} />
+      </button>
+    </section>
+  );
+}
+
+function StorageSkeleton() {
+  return (
+    <div className="dl-card dl-card-sk" aria-hidden="true">
+      <div className="dl-storage">
+        <div className="skeleton" style={{ width: 40, height: 40, borderRadius: 13 }} />
+        <div className="dl-storage-text">
+          <div className="skeleton" style={{ height: 16, width: '55%' }} />
+          <div className="skeleton" style={{ height: 12, width: '75%', marginTop: 6 }} />
+        </div>
+      </div>
+      <div className="skeleton" style={{ height: 8, borderRadius: 99, marginTop: 14 }} />
+      <div className="skeleton" style={{ height: 44, marginTop: 14, borderRadius: 14 }} />
+    </div>
+  );
+}
 
 function Thumb({ id }) {
   const [loaded, setLoaded] = useState(false);
@@ -51,6 +176,7 @@ function Thumb({ id }) {
 export default function Downloads() {
   const navigate = useNavigate();
   const { items, loading, supported } = useDownloads();
+  const network = useNetwork();
   const [filter, setFilter] = useState('all');
   const [menuOpen, setMenuOpen] = useState(false);
   const [itemMenu, setItemMenu] = useState(null);
@@ -63,6 +189,14 @@ export default function Downloads() {
     [items, filter]
   );
   const totalBytes = useMemo(() => items.reduce((sum, d) => sum + (d.bytes || 0), 0), [items]);
+  const running = useMemo(() => items.filter((d) => d.status === 'downloading'), [items]);
+  const totalSpeed = useMemo(() => running.reduce((sum, d) => sum + (d.speed || 0), 0), [running]);
+  const doneCount = useMemo(() => items.filter((d) => d.status === 'completed').length, [items]);
+  const pausedCount = useMemo(
+    () => items.filter((d) => d.status === 'paused' || d.status === 'error').length,
+    [items]
+  );
+  const storage = useStorage(Math.round(totalBytes / (16 * 1024 * 1024)));
 
   // Keep the open menu in step with the latest download state
   const menuItem = itemMenu ? items.find((d) => d.id === itemMenu.id) || null : null;
@@ -123,6 +257,7 @@ export default function Downloads() {
       <div className="page">
         <Header title="Downloads" right={menuButton} />
         {chips}
+        <StorageSkeleton />
         <div className="lib-list">
           {[0, 1, 2].map((i) => (
             <div key={i} className="lib-card lib-sk-card">
@@ -163,10 +298,17 @@ export default function Downloads() {
         <EmptyState
           icon={Film}
           title={filter === 'tv' ? 'No series downloaded' : 'No movies downloaded'}
-          text="Downloads of this type will show up here."
+        text="Downloads of this type will show up here."
         />
-      ) : (
+       ) : (
         <>
+          <StorageCard
+            totalBytes={totalBytes}
+            storage={storage}
+            active={running.length}
+            speed={totalSpeed}
+            network={network}
+          />
           <div className="lib-count">
             {items.length} {items.length === 1 ? 'download' : 'downloads'} · {formatBytes(totalBytes)}
           </div>
@@ -207,17 +349,25 @@ export default function Downloads() {
                       </>
                     ) : (
                       <>
-                        <span className="lib-meta">
-                          {d.status === 'error' ? (
-                            <span style={{ color: 'var(--danger)' }}>{d.error}</span>
-                          ) : (
-                            <span>
-                              {d.status === 'paused' ? 'Paused · ' : ''}
-                              {pct}% · {formatBytes(d.bytes)}
-                              {d.size ? ` of ${formatBytes(d.size)}` : ''}
+                        {(() => {
+                          const line = progressLine(d, pct);
+                          return (
+                            <span className="lib-meta">
+                              {line.bad ? (
+                                <span style={{ color: 'var(--danger)' }}>{line.text}</span>
+                              ) : line.wifi ? (
+                                <span className="dl-waiting">
+                                  <Wifi size={13} /> {line.text}
+                                </span>
+                              ) : (
+                                <span>{line.text}</span>
+                              )}
                             </span>
-                          )}
-                        </span>
+                          );
+                        })()}
+                        {d.status === 'downloading' && (
+                          <span className="lib-meta dl-speed">{speedLine(d)}</span>
+                        )}
                         <span className="progress" style={{ display: 'block', width: '100%' }}>
                           <span style={{ display: 'block', width: `${pct}%` }} />
                         </span>
@@ -236,8 +386,14 @@ export default function Downloads() {
                   ) : (
                     <button
                       className="lib-play"
-                      onClick={() => resumeDownload(d.id)}
-                      aria-label={d.status === 'error' ? 'Try again' : 'Resume download'}
+                      onClick={() => resumeDownload(d.id, true)}
+                      aria-label={
+                        d.waitingWifi
+                          ? 'Download now on mobile data'
+                          : d.status === 'error'
+                            ? 'Try again'
+                            : 'Resume download'
+                      }
                     >
                       <RotateCw size={20} />
                     </button>
@@ -262,6 +418,48 @@ export default function Downloads() {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <h3>Downloads</h3>
             <div className="sheet-list">
+              <button
+                role="switch"
+                aria-checked={network.wifiOnly}
+                onClick={() => setWifiOnly(!network.wifiOnly)}
+              >
+                <Wifi size={20} /> Download on Wi-Fi only
+                <span className={`switch dl-menu-switch ${network.wifiOnly ? 'on' : ''}`} />
+              </button>
+              {running.length > 0 && (
+                <button
+                  onClick={() => {
+                    running.forEach((d) => pauseDownload(d.id));
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Pause size={20} /> Pause all
+                </button>
+              )}
+              {pausedCount > 0 && (
+                <button
+                  onClick={() => {
+                    items
+                      .filter((d) => d.status === 'paused' || d.status === 'error')
+                      .forEach((d) => resumeDownload(d.id, true));
+                    setMenuOpen(false);
+                  }}
+                >
+                  <RotateCw size={20} /> Resume all
+                </button>
+              )}
+              <div className="sep" />
+              {doneCount > 0 && (
+                <button
+                  className="danger-text"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setConfirm({ type: 'done' });
+                  }}
+                >
+                  <CheckCheck size={20} /> Remove finished films
+                </button>
+              )}
               <button
                 className="danger-text"
                 onClick={() => {
@@ -299,11 +497,16 @@ export default function Downloads() {
               {(menuItem.status === 'paused' || menuItem.status === 'error') && (
                 <button
                   onClick={() => {
-                    resumeDownload(menuItem.id);
+                    resumeDownload(menuItem.id, true);
                     setItemMenu(null);
                   }}
                 >
-                  <RotateCw size={20} /> {menuItem.status === 'error' ? 'Try again' : 'Resume'}
+                  <RotateCw size={20} />
+                  {menuItem.waitingWifi
+                    ? 'Download now on mobile data'
+                    : menuItem.status === 'error'
+                      ? 'Try again'
+                      : 'Resume'}
                 </button>
               )}
               <a
@@ -334,11 +537,19 @@ export default function Downloads() {
       {confirm && (
         <div className="sheet-backdrop" onClick={() => setConfirm(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h3>{confirm.type === 'all' ? 'Clear all downloads?' : `Remove "${confirm.item.title}"?`}</h3>
+            <h3>
+              {confirm.type === 'all'
+                ? 'Clear all downloads?'
+                : confirm.type === 'done'
+                  ? 'Remove finished films?'
+                  : `Remove "${confirm.item.title}"?`}
+            </h3>
             <p>
               {confirm.type === 'all'
                 ? 'This deletes every downloaded film from this device.'
-                : 'This deletes the downloaded file from this device.'}
+                : confirm.type === 'done'
+                  ? `This deletes ${doneCount} finished ${doneCount === 1 ? 'film' : 'films'} from this device. Films still downloading are kept.`
+                  : 'This deletes the downloaded file from this device.'}
             </p>
             <div className="sheet-actions">
               <button onClick={() => setConfirm(null)}>Cancel</button>
@@ -346,6 +557,7 @@ export default function Downloads() {
                 className="danger"
                 onClick={() => {
                   if (confirm.type === 'all') clearDownloads();
+                  else if (confirm.type === 'done') removeCompleted();
                   else removeDownload(confirm.item.id);
                   setConfirm(null);
                 }}
@@ -370,4 +582,4 @@ export default function Downloads() {
       )}
     </div>
   );
-    }
+                              }
