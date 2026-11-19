@@ -3,6 +3,7 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { fetchSubtitleVtt } from './subtitles.js';
 import { ensureNotificationPermission, notifyDownload } from './notify.js';
+import { blockedByWifiOnly, networkReady, subscribeNetwork } from './network.js';
 
 /* Offline downloads. Files are saved in the browser's storage (IndexedDB) in
    pieces, so a download can be paused and resumed. A download only runs
@@ -17,7 +18,11 @@ import { ensureNotificationPermission, notifyDownload } from './notify.js';
    finished block is saved straight away, so pausing or losing the connection
    never loses finished blocks. A browser would block these requests: the
    Internet Archive does not allow other websites to read its files, so
-   downloads are for the Android app. */
+   downloads are for the Android app.
+
+   With "Download on Wi-Fi only" switched on, downloads wait while the phone is
+   on mobile data and carry on by themselves when Wi-Fi is back. A download the
+   person starts by hand with "Download anyway" is allowed to use mobile data. */
 
 const DB_NAME = 'nexushd-offline';
 const CHUNK_BYTES = 4 * 1024 * 1024;
@@ -66,12 +71,44 @@ const chunkRange = (id) => IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEG
 
 const records = new Map();
 const controllers = new Map();
+// downloads the person chose to run on mobile data even with Wi-Fi only on
+const forced = new Set();
+// recent finished blocks per download, used to work out the speed
+const meters = new Map();
+const SPEED_WINDOW = 6000;
 const listeners = new Set();
 let state = { items: [], loading: true };
 let lastMirror = '';
 
+function noteBytes(id, count) {
+  const now = Date.now();
+  let meter = meters.get(id);
+  if (!meter) {
+    meter = [];
+    meters.set(id, meter);
+  }
+  meter.push({ t: now, b: count });
+  while (meter.length && meter[0].t < now - SPEED_WINDOW) meter.shift();
+}
+
+/* bytes per second over the last few seconds, 0 when nothing is arriving */
+function speedOf(rec) {
+  if (rec.status !== 'downloading') return 0;
+  const meter = meters.get(rec.id);
+  if (!meter || meter.length < 2) return 0;
+  const last = meter[meter.length - 1];
+  if (Date.now() - last.t > 4000) return 0;
+  const span = (last.t - meter[0].t) / 1000;
+  if (span < 0.5) return 0;
+  let bytes = 0;
+  for (let i = 1; i < meter.length; i += 1) bytes += meter[i].b;
+  return bytes / span;
+}
+
 function emit(loading = state.loading) {
-  const items = [...records.values()].sort((a, b) => b.createdAt - a.createdAt);
+  const items = [...records.values()]
+    .map((rec) => ({ ...rec, speed: speedOf(rec) }))
+    .sort((a, b) => b.createdAt - a.createdAt);
   state = { items, loading };
 
   // Keeps a small list so other screens (like Profile) can show the count.
@@ -252,6 +289,7 @@ async function downloadNative(id, controller) {
       await saveChunk(next, index, new Blob([bytes], { type: 'video/mp4' }));
       if (!records.has(id)) return;
       records.set(id, next);
+      noteBytes(id, bytes.length);
       emit();
     };
     const p = chain.then(job);
@@ -324,7 +362,7 @@ async function downloadNative(id, controller) {
     while (!failure && !controller.signal.aborted) {
       const index = queue.shift();
       if (index === undefined) return;
-      for (let attempt = 1; ; attempt += 1) {
+             for (let attempt = 1; ; attempt += 1) {
         try {
           await getBlock(index);
           break;
@@ -347,11 +385,17 @@ async function downloadNative(id, controller) {
   return (records.get(id).done || []).length >= blocks;
 }
 
-async function run(id) {
+async function run(id, force = false) {
   if (!records.get(id) || controllers.has(id)) return;
+  if (force) forced.add(id);
+  if (!forced.has(id) && blockedByWifiOnly()) {
+    // Wi-Fi only and on mobile data: wait, and carry on by itself on Wi-Fi
+    patch(id, { status: 'paused', waitingWifi: true, resumeOnOpen: true, error: '' }, true);
+    return;
+  }
   const controller = new AbortController();
   controllers.set(id, controller);
-  patch(id, { status: 'downloading', error: '', resumeOnOpen: true }, true);
+  patch(id, { status: 'downloading', error: '', resumeOnOpen: true, waitingWifi: false }, true);
 
   let buffer = [];
   let bufferBytes = 0;
@@ -401,6 +445,7 @@ async function run(id) {
       if (done) break;
       buffer.push(value);
       bufferBytes += value.length;
+      noteBytes(id, value.length);
       if (bufferBytes >= CHUNK_BYTES) await flush();
       const now = Date.now();
       if (now - lastEmit > 250) {
@@ -429,10 +474,12 @@ async function run(id) {
           size: done.stored,
           completedAt: Date.now(),
           resumeOnOpen: false,
+          waitingWifi: false,
           tries: 0,
         },
         true
       );
+      forced.delete(id);
       notifyDownload({
         key: id,
         title: 'Download finished',
@@ -454,6 +501,8 @@ async function run(id) {
     }
   } finally {
     controllers.delete(id);
+    meters.delete(id);
+    emit();
   }
 }
 
@@ -467,6 +516,7 @@ async function init() {
     const all = await request(db.transaction('downloads').objectStore('downloads').getAll());
     all.forEach((rec) => {
       rec.tries = 0;
+      rec.waitingWifi = Boolean(rec.waitingWifi);
       // A download that was running when the app closed is now paused.
       if (rec.status === 'downloading') {
         rec.status = 'paused';
@@ -478,6 +528,9 @@ async function init() {
     /* storage blocked */
   }
   emit(false);
+  // wait for the first reading of the connection, so nothing restarts on
+  // mobile data by mistake when Wi-Fi only is on
+  await networkReady.catch(() => {});
   resumeInterrupted();
 }
 init();
@@ -502,6 +555,7 @@ export async function startDownload(film) {
     title: film.title,
     year: film.year || null,
     media_type: 'movie',
+    waitingWifi: false,
     src: film.src,
     size: film.sizeBytes || 0,
     seconds: film.seconds || 0,
@@ -544,19 +598,46 @@ async function saveSubtitles(id, subs = []) {
 export function pauseDownload(id, auto = false) {
   const rec = records.get(id);
   if (!rec) return;
+  if (!auto) forced.delete(id);
   controllers.get(id)?.abort();
-  patch(id, { status: 'paused', bytes: rec.stored, resumeOnOpen: auto, tries: 0 }, true);
+  meters.delete(id);
+  patch(
+    id,
+    { status: 'paused', bytes: rec.stored, resumeOnOpen: auto, waitingWifi: false, tries: 0 },
+    true
+  );
 }
 
-export function resumeDownload(id) {
+/* The phone moved to mobile data while Wi-Fi only is on */
+function pauseForWifi(id) {
+  const rec = records.get(id);
+  if (!rec) return;
+  controllers.get(id)?.abort();
+  meters.delete(id);
+  patch(
+    id,
+    { status: 'paused', bytes: rec.stored, resumeOnOpen: true, waitingWifi: true, tries: 0 },
+    true
+  );
+  notifyDownload({
+    key: `wifi-${id}`,
+    title: 'Waiting for Wi-Fi',
+    body: `${rec.title} will carry on when you are on Wi-Fi.`,
+  });
+}
+
+/* force = true when the person taps "Download anyway": it may use mobile data */
+export function resumeDownload(id, force = false) {
   const rec = records.get(id);
   if (!rec || rec.status === 'completed') return;
-  patch(id, { tries: 0 });
-  run(id);
+  patch(id, { tries: 0, waitingWifi: false });
+  run(id, force);
 }
 
 export async function removeDownload(id) {
   controllers.get(id)?.abort();
+  forced.delete(id);
+  meters.delete(id);
   records.delete(id);
   emit();
   try {
@@ -568,6 +649,23 @@ export async function removeDownload(id) {
 
 export async function clearDownloads() {
   await Promise.all([...records.keys()].map((id) => removeDownload(id)));
+}
+
+/* Deletes the finished films and keeps what is still downloading */
+export async function removeCompleted() {
+  const done = [...records.values()].filter((r) => r.status === 'completed');
+  await Promise.all(done.map((r) => removeDownload(r.id)));
+}
+
+/* How much room the saved films use and roughly how much is left on the phone */
+export async function getStorageInfo() {
+  try {
+    const estimate = await navigator.storage?.estimate?.();
+    if (estimate?.quota) return { used: estimate.usage || 0, quota: estimate.quota };
+  } catch {
+    /* not available */
+  }
+  return null;
 }
 
 /* Returns a temporary address the video player can use. Call
@@ -589,9 +687,31 @@ function resumeInterrupted(onlyId) {
     if (onlyId && rec.id !== onlyId) return;
     if (!rec.resumeOnOpen || rec.status === 'completed' || rec.status === 'downloading') return;
     if (controllers.has(rec.id) || (rec.tries || 0) >= MAX_AUTO_TRIES) return;
+    if (!forced.has(rec.id) && blockedByWifiOnly()) {
+      if (!rec.waitingWifi) patch(rec.id, { waitingWifi: true }, true);
+      return;
+    }
     patch(rec.id, { tries: (rec.tries || 0) + 1 });
     run(rec.id);
   });
+}
+
+// Wi-Fi only: pause on mobile data, carry on when Wi-Fi is back or the switch goes off
+subscribeNetwork(() => {
+  if (blockedByWifiOnly()) {
+    records.forEach((rec) => {
+      if (rec.status === 'downloading' && !forced.has(rec.id)) pauseForWifi(rec.id);
+    });
+  } else {
+    resumeInterrupted();
+  }
+});
+
+// keeps the speed and time left moving while something downloads
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    if (controllers.size) emit();
+  }, 1000);
 }
 
 if (typeof document !== 'undefined') {
