@@ -2,15 +2,26 @@ import { Capacitor } from '@capacitor/core';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { StatusBar } from '@capacitor/status-bar';
 
-/* Turning the screen for the video player. In the Android app this uses the
-   phone's own screen lock. In a browser it uses fullscreen, which is the only
-   way a website is allowed to turn the screen. */
+/* Turning the screen. In the Android app this uses the phone's own screen lock.
+   In a browser it uses fullscreen, which is the only way a website is allowed
+   to turn the screen.
+
+   The whole app stays in portrait on phones. The video player turns to
+   landscape while a film plays and gives the screen back to portrait when it
+   closes. Tablets and big screens are left free to rotate. */
 
 const native = () => Capacitor.isNativePlatform();
 const ignore = () => {};
 
 export const isLandscape = () =>
   typeof window !== 'undefined' && window.matchMedia('(orientation: landscape)').matches;
+
+/* A phone has a short side under 600 dp, a tablet has more */
+export const isPhone = () => {
+  if (typeof window === 'undefined') return true;
+  const side = Math.min(window.screen?.width || 0, window.screen?.height || 0);
+  return side > 0 ? side < 600 : true;
+};
 
 export async function lockLandscape() {
   if (native()) {
@@ -39,10 +50,17 @@ export async function lockPortrait() {
   }
 }
 
-/* Gives the screen back to the phone (auto-rotate) when the player closes */
+/* The orientation the app itself uses: portrait on phones, free on tablets */
+export async function lockAppOrientation() {
+  if (!native()) return;
+  if (isPhone()) await ScreenOrientation.lock({ orientation: 'portrait' }).catch(ignore);
+  else await ScreenOrientation.unlock().catch(ignore);
+}
+
+/* Gives the screen back to the app when the player closes */
 export async function releaseOrientation() {
   if (native()) {
-    await ScreenOrientation.unlock().catch(ignore);
+    await lockAppOrientation();
     StatusBar.show().catch(ignore);
     return;
   }
@@ -52,4 +70,4 @@ export async function releaseOrientation() {
   } catch {
     /* nothing to undo */
   }
-  }
+}
