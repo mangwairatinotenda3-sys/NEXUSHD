@@ -1,0 +1,128 @@
+/* ---------- Downloads: storage, speed and Wi-Fi only ---------- */
+.dl-card {
+  margin: 0 16px 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.dl-storage {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dl-ico {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  color: var(--primary-bright);
+  background: var(--primary-soft);
+}
+
+.dl-storage-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dl-storage-text b {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dl-storage-text span {
+  display: block;
+  margin-top: 1px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dl-bar {
+  height: 8px;
+  margin-top: 14px;
+  border-radius: 99px;
+  background: var(--primary-soft);
+  overflow: hidden;
+}
+
+.dl-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #7a2cf5, #a855f7);
+  transition: width 0.4s ease;
+}
+
+.dl-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary-bright);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.dl-wifi {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  text-align: left;
+}
+
+.dl-wifi:active {
+  filter: brightness(1.08);
+}
+
+.dl-wifi > svg {
+  flex: 0 0 auto;
+  color: var(--primary-bright);
+}
+
+.dl-wifi-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dl-wifi-text b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dl-wifi-text span {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.dl-menu-switch {
+  margin-left: auto;
+}
+
+.dl-speed {
+  color: var(--primary-bright);
+  font-weight: 600;
+}
+
+.dl-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-bright);
+  font-weight: 600;
+  }
