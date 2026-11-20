@@ -7,6 +7,7 @@ import FirstRun from './FirstRun.jsx';
 import useOnline from '../hooks/useOnline.js';
 import useDownloads, { pauseDownload, resumeDownload } from '../services/downloadManager.js';
 import '../styles/offline.css';
+import '../styles/adaptive.css';
 
 const HIDE_NAV_ON = ['/settings'];
 
@@ -104,4 +105,4 @@ export default function AppLayout() {
       <FirstRun />
     </div>
   );
-    }
+        }
