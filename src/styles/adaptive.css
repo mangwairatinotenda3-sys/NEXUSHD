@@ -1,0 +1,175 @@
+/* ---------- Every screen size ----------
+   Phones (portrait) use the normal layout. From 700 px wide (tablets, big
+   phones in landscape, computers) the tab bar becomes a rail on the left, the
+   content gets room and lists turn into grids. */
+
+/* very small phones */
+@media (max-width: 359px) {
+  .header {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .header h1 {
+    font-size: 23px;
+  }
+
+  .lib-chip {
+    padding: 9px 18px;
+    font-size: 15px;
+  }
+
+  .nav-item {
+    font-size: 10.5px;
+  }
+}
+
+/* tablets and computers */
+@media (min-width: 700px) {
+  .app-shell {
+    max-width: 1360px;
+    border-left: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+  }
+
+  /* the tab bar becomes a rail on the left */
+  .app-shell .bottom-nav {
+    top: 0;
+    right: auto;
+    width: 92px;
+    height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: calc(var(--safe-top) + 28px) 8px 24px;
+    border-top: 0;
+    border-right: 1px solid var(--card-border);
+    border-radius: 0 24px 24px 0;
+  }
+
+  .app-shell .nav-item {
+    flex: 0 0 auto;
+    height: 72px;
+    border-radius: 16px;
+  }
+
+  .app-shell .nav-item.active {
+    background: var(--primary-soft);
+  }
+
+  .app-shell .app-content {
+    padding-left: 92px;
+    padding-bottom: 28px;
+  }
+
+  .app-shell .app-content.no-nav,
+  body.hide-nav .app-shell .app-content {
+    padding-left: 0;
+  }
+
+  .app-content > .page {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* lists and posters use the room */
+  .app-shell .grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 20px 16px;
+  }
+
+  .app-shell .free-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 22px 16px;
+  }
+
+  .app-shell .lib-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 14px;
+  }
+
+  .app-shell .movie-card {
+    flex-basis: 140px;
+  }
+
+  /* settings and profile cards do not stretch across the whole screen */
+  .app-content .page > .card,
+  .app-content .page > .brand-card {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .app-shell .dl-card {
+    max-width: 720px;
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  /* sheets open as a dialog in the middle of the screen */
+  .app-shell .sheet-backdrop:not(.film-page) {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .app-shell .sheet-backdrop:not(.film-page) > .sheet {
+    max-width: 520px;
+    max-height: 100%;
+    overflow-y: auto;
+    padding-bottom: 24px;
+    border-radius: 24px;
+    border: 1px solid var(--card-border);
+  }
+
+  /* the film page is a centred column */
+  .app-shell .sheet-backdrop.film-page .fp {
+    max-width: 760px;
+    margin: 0 auto;
+    border-left: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+    background: var(--bg);
+  }
+}
+
+/* big screens */
+@media (min-width: 1100px) {
+  .app-shell .lib-list {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  }
+
+  .app-shell .free-grid {
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  }
+}
+
+/* a phone turned sideways (only possible when something unlocks rotation) */
+@media (max-height: 480px) and (orientation: landscape) {
+  .app-shell .bottom-nav {
+    top: 0;
+    right: auto;
+    width: 76px;
+    height: auto;
+    flex-direction: column;
+    justify-content: center;
+    padding: 6px 6px;
+    border-top: 0;
+    border-right: 1px solid var(--card-border);
+    border-radius: 0 20px 20px 0;
+  }
+
+  .app-shell .nav-item {
+    flex: 1 1 0;
+  }
+
+  .app-shell .app-content {
+    padding-left: 76px;
+    padding-bottom: 16px;
+  }
+
+  .app-shell .app-content.no-nav,
+  body.hide-nav .app-shell .app-content {
+    padding-left: 0;
+  }
+    }
