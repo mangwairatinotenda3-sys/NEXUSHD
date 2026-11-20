@@ -431,4 +431,28 @@
 
 .film-links .film-wide {
   margin-top: 0;
-    }
+}
+
+/* ----- picture-in-picture: only the film shows in the small window ----- */
+.player.pl.pl-pip .player-top,
+.player.pl.pl-pip .pl-center,
+.player.pl.pl-pip .pl-bottom,
+.player.pl.pl-pip .pl-unlock,
+.player.pl.pl-pip .pl-flash,
+.player.pl.pl-pip .pl-note,
+.player.pl.pl-pip .subs-backdrop {
+  display: none;
+}
+
+.player.pl.pl-pip .pl-video {
+  object-fit: contain !important;
+}
+
+.player.pl.pl-pip .pl-wait {
+  top: 50%;
+}
+
+.player.pl.pl-pip .pl-wait span {
+  padding: 4px 10px;
+  font-size: 11px;
+   }
