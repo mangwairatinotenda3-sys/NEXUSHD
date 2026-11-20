@@ -54,13 +54,20 @@ function formatLeft(seconds) {
   return `${hours} h ${minutes} min left`;
 }
 
-// the line under a download that is not finished
-function progressLine(d, pct) {
-  if (d.status === 'error') return { text: d.error, bad: true };
-  if (d.waitingWifi) return { text: 'Waiting for Wi-Fi', wifi: true };
-  const amount = `${pct}% · ${formatBytes(d.bytes)}${d.size ? ` of ${formatBytes(d.size)}` : ''}`;
-  if (d.status === 'paused') return { text: `Paused · ${amount}` };
-  return { text: amount };
+/* What a download that is not finished is doing, in words and in colour */
+function stateOf(d) {
+  if (d.status === 'downloading') return { id: 'live', label: 'Downloading' };
+  if (d.status === 'error') return { id: 'error', label: 'Failed' };
+  if (d.waitingWifi) return { id: 'wifi', label: 'Waiting for Wi-Fi' };
+  return { id: 'paused', label: 'Paused' };
+}
+
+/* The one button on a card: it always says what tapping it does */
+function actionOf(d) {
+  if (d.status === 'downloading') return { id: 'pause', label: 'Pause', Icon: Pause, fill: true };
+  if (d.status === 'error') return { id: 'retry', label: 'Retry', Icon: RotateCw };
+  if (d.waitingWifi) return { id: 'data', label: 'Use mobile data', Icon: Zap };
+  return { id: 'resume', label: 'Resume', Icon: Play, fill: true };
 }
 
 function speedLine(d) {
@@ -86,77 +93,97 @@ function useStorage(refreshKey) {
   return info;
 }
 
-function StorageCard({ totalBytes, storage, active, speed, network }) {
+function Hero({ totalBytes, count, storage, active, speed }) {
   const free = storage ? Math.max(0, storage.quota - storage.used) : 0;
   const fill = storage && storage.quota ? Math.min(100, (storage.used / storage.quota) * 100) : 0;
-  const onMobile = network.connection === 'cellular';
 
   return (
-    <section className="dl-card" aria-label="Storage and download settings">
-      <div className="dl-storage">
-        <span className="dl-ico">
-          <HardDrive size={20} />
+    <section className="dl-hero" aria-label="Storage">
+      <div className="dl-hero-top">
+        <span className="dl-hero-ico">
+          <HardDrive size={22} />
         </span>
-        <div className="dl-storage-text">
-          <b>{formatBytes(totalBytes)} of downloads</b>
-          <span>{storage ? `About ${formatBytes(free)} free on this device` : 'Saved on this device'}</span>
+        <div className="dl-hero-text">
+          <b>{formatBytes(totalBytes)}</b>
+          <span>
+            {count} {count === 1 ? 'film' : 'films'} on this device
+          </span>
         </div>
       </div>
       {storage && (
-        <div className="dl-bar" aria-hidden="true">
-          <span style={{ width: `${Math.max(fill, totalBytes ? 2 : 0)}%` }} />
-        </div>
+        <>
+          <div className="dl-hero-bar" aria-hidden="true">
+            <span style={{ width: `${Math.max(fill, totalBytes ? 2 : 0)}%` }} />
+          </div>
+          <div className="dl-hero-free">About {formatBytes(free)} free</div>
+        </>
       )}
-
       {active > 0 && (
         <div className="dl-live">
           <Zap size={15} />
           <span>
-            {speed > 0
-              ? `Downloading at ${formatSpeed(speed)}`
-              : active === 1
-                ? 'Connecting…'
-                : 'Connecting…'}
+            {speed > 0 ? `Downloading at ${formatSpeed(speed)}` : 'Connecting…'}
             {active > 1 ? ` · ${active} active` : ''}
           </span>
         </div>
       )}
-
-      <button
-        type="button"
-        className="dl-wifi"
-        role="switch"
-        aria-checked={network.wifiOnly}
-        onClick={() => setWifiOnly(!network.wifiOnly)}
-      >
-        <Wifi size={20} />
-        <span className="dl-wifi-text">
-          <b>Download on Wi-Fi only</b>
-          <span>
-            {network.wifiOnly && onMobile
-              ? "You're on mobile data, so downloads are waiting"
-              : 'Saves your mobile data'}
-          </span>
-        </span>
-        <span className={`switch ${network.wifiOnly ? 'on' : ''}`} />
-      </button>
     </section>
   );
 }
 
-function StorageSkeleton() {
+function WifiRow({ network }) {
+  const onMobile = network.connection === 'cellular';
   return (
-    <div className="dl-card dl-card-sk" aria-hidden="true">
-      <div className="dl-storage">
-        <div className="skeleton" style={{ width: 40, height: 40, borderRadius: 13 }} />
-        <div className="dl-storage-text">
-          <div className="skeleton" style={{ height: 16, width: '55%' }} />
-          <div className="skeleton" style={{ height: 12, width: '75%', marginTop: 6 }} />
+    <button
+      type="button"
+      className="dl-wifi-row"
+      role="switch"
+      aria-checked={network.wifiOnly}
+      onClick={() => setWifiOnly(!network.wifiOnly)}
+    >
+      <span className="dl-wifi-ico">
+        <Wifi size={20} />
+      </span>
+      <span className="dl-wifi-text">
+        <b>Download on Wi-Fi only</b>
+        <span>
+          {network.wifiOnly && onMobile
+            ? "You're on mobile data, so downloads are waiting"
+            : 'Saves your mobile data'}
+        </span>
+      </span>
+      <span className={`switch ${network.wifiOnly ? 'on' : ''}`} />
+    </button>
+  );
+}
+
+function DownloadsSkeleton() {
+  return (
+    <>
+      <div className="dl-hero dl-hero-sk" aria-hidden="true">
+        <div className="dl-hero-top">
+          <div className="skeleton" style={{ width: 46, height: 46, borderRadius: 15 }} />
+          <div className="dl-hero-text">
+            <div className="skeleton" style={{ height: 22, width: '45%' }} />
+            <div className="skeleton" style={{ height: 13, width: '65%', marginTop: 8 }} />
+          </div>
         </div>
+        <div className="skeleton" style={{ height: 8, borderRadius: 99, marginTop: 18 }} />
       </div>
-      <div className="skeleton" style={{ height: 8, borderRadius: 99, marginTop: 14 }} />
-      <div className="skeleton" style={{ height: 44, marginTop: 14, borderRadius: 14 }} />
-    </div>
+      <div className="skeleton" style={{ height: 66, borderRadius: 20, margin: '0 16px 16px' }} />
+      <div className="lib-list" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="lib-card lib-sk-card">
+            <div className="skeleton lib-thumb-sk" />
+            <div className="lib-info">
+              <div className="skeleton" style={{ height: 18, width: '65%' }} />
+              <div className="skeleton" style={{ height: 13, width: '45%', marginTop: 4 }} />
+              <div className="skeleton" style={{ height: 8, width: '90%', marginTop: 8, borderRadius: 99 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -188,6 +215,8 @@ export default function Downloads() {
     () => items.filter((d) => filter === 'all' || (d.media_type || 'movie') === filter),
     [items, filter]
   );
+  const unfinished = useMemo(() => visible.filter((d) => d.status !== 'completed'), [visible]);
+  const finished = useMemo(() => visible.filter((d) => d.status === 'completed'), [visible]);
   const totalBytes = useMemo(() => items.reduce((sum, d) => sum + (d.bytes || 0), 0), [items]);
   const running = useMemo(() => items.filter((d) => d.status === 'downloading'), [items]);
   const totalSpeed = useMemo(() => running.reduce((sum, d) => sum + (d.speed || 0), 0), [running]);
@@ -225,6 +254,11 @@ export default function Downloads() {
     [setProgress]
   );
 
+  const runAction = (d) => {
+    if (d.status === 'downloading') pauseDownload(d.id);
+    else resumeDownload(d.id, true);
+  };
+
   const menuButton = (
     <button
       className="icon-btn"
@@ -236,19 +270,21 @@ export default function Downloads() {
     </button>
   );
 
-  const chips = (
-    <div className="lib-chips" role="tablist">
-      {FILTERS.map((f) => (
-        <button
-          key={f.id}
-          role="tab"
-          aria-selected={filter === f.id}
-          className={`lib-chip ${filter === f.id ? 'on' : ''}`}
-          onClick={() => setFilter(f.id)}
-        >
-          {f.label}
-        </button>
-      ))}
+  const filterBar = (
+    <div className="lib-bar dl-filter">
+      <div className="lib-seg" role="tablist" aria-label="Type">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            role="tab"
+            aria-selected={filter === f.id}
+            className={filter === f.id ? 'on' : ''}
+            onClick={() => setFilter(f.id)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -256,29 +292,107 @@ export default function Downloads() {
     return (
       <div className="page">
         <Header title="Downloads" right={menuButton} />
-        {chips}
-        <StorageSkeleton />
-        <div className="lib-list">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="lib-card lib-sk-card">
-              <div className="skeleton lib-thumb-sk" />
-              <div className="lib-info">
-                <div className="skeleton" style={{ height: 18, width: '65%' }} />
-                <div className="skeleton" style={{ height: 13, width: '45%', marginTop: 4 }} />
-                <div className="skeleton" style={{ height: 13, width: '30%', marginTop: 4 }} />
-              </div>
-              <div className="skeleton" style={{ width: 46, height: 46, borderRadius: '50%', margin: 'auto 14px auto 0' }} />
-            </div>
-          ))}
-        </div>
+        <DownloadsSkeleton />
       </div>
     );
   }
 
-  return (
+  const activeCard = (d, i) => {
+    const pct = percent(d);
+    const state = stateOf(d);
+    const action = actionOf(d);
+    const ActionIcon = action.Icon;
+    return (
+      <article
+        className="lib-card dl-item"
+        key={d.id}
+        style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+      >
+        <button className="lib-thumb" onClick={() => setItemMenu(d)} aria-label={`Options for ${d.title}`}>
+          <Thumb id={d.id} />
+        </button>
+        <div className="dl-body">
+          <div className="dl-top">
+            <button className="dl-title" onClick={() => setItemMenu(d)}>
+              {d.title}
+            </button>
+            <button
+              className="icon-btn dl-more"
+              onClick={() => setItemMenu(d)}
+              aria-label={`Options for ${d.title}`}
+            >
+              <MoreVertical size={20} />
+            </button>
+          </div>
+
+          <div className="dl-status">
+            <span className={`dl-pill ${state.id}`}>
+              {state.id === 'wifi' && <Wifi size={12} />}
+              {state.label}
+            </span>
+            <span className="dl-amount">
+              {pct}%{d.size ? ` · ${formatBytes(d.bytes)} of ${formatBytes(d.size)}` : ''}
+            </span>
+          </div>
+
+          <div className={`dl-progress ${state.id}`} aria-hidden="true">
+            <span style={{ width: `${Math.max(pct, d.status === 'downloading' ? 2 : 0)}%` }} />
+          </div>
+
+          {d.status === 'error' && d.error && <div className="dl-error">{d.error}</div>}
+
+          <div className="dl-foot">
+            <span className="dl-speed">{speedLine(d)}</span>
+            <button className={`dl-action ${action.id}`} onClick={() => runAction(d)}>
+              <ActionIcon size={16} fill={action.fill ? 'currentColor' : 'none'} />
+              {action.label}
+            </button>
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+  const doneCard = (d, i) => (
+    <article
+      className="lib-card"
+      key={d.id}
+      style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+    >
+      <button className="lib-thumb" onClick={() => play(d)} aria-label={`Play ${d.title}`}>
+        <Thumb id={d.id} />
+      </button>
+
+      <button className="lib-info" onClick={() => play(d)}>
+        <span className="lib-title">{d.title}</span>
+        <span className="lib-meta">
+          <span>{formatBytes(d.size)}</span>
+          {d.seconds > 0 && <span>{formatDuration(d.seconds)}</span>}
+        </span>
+        <span className="lib-status" style={{ gap: 6 }}>
+          <span className="check">
+            <Check size={11} strokeWidth={3} />
+          </span>
+          Ready to watch offline
+        </span>
+      </button>
+
+      <button className="lib-play" onClick={() => play(d)} aria-label={`Play ${d.title}`}>
+        <Play size={20} fill="currentColor" />
+      </button>
+      <button
+        className="icon-btn lib-more"
+        onClick={() => setItemMenu(d)}
+        aria-label={`Options for ${d.title}`}
+      >
+        <MoreVertical size={22} />
+      </button>
+    </article>
+  );
+
+   return (
     <div className="page">
       <Header title="Downloads" right={menuButton} />
-      {chips}
 
       {!supported ? (
         <EmptyState
@@ -294,122 +408,44 @@ export default function Downloads() {
           actionLabel="Browse Free Films"
           onAction={() => navigate('/free')}
         />
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon={Film}
-          title={filter === 'tv' ? 'No series downloaded' : 'No movies downloaded'}
-        text="Downloads of this type will show up here."
-        />
-       ) : (
+      ) : (
         <>
-          <StorageCard
+          <Hero
             totalBytes={totalBytes}
+            count={items.length}
             storage={storage}
             active={running.length}
             speed={totalSpeed}
-            network={network}
           />
-          <div className="lib-count">
-            {items.length} {items.length === 1 ? 'download' : 'downloads'} · {formatBytes(totalBytes)}
-          </div>
-          <div className="lib-list">
-            {visible.map((d, i) => {
-              const pct = percent(d);
-              const done = d.status === 'completed';
-              return (
-                <article
-                  className="lib-card"
-                  key={d.id}
-                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                >
-                  <button
-                    className="lib-thumb"
-                    onClick={() => (done ? play(d) : setItemMenu(d))}
-                    aria-label={done ? `Play ${d.title}` : `Options for ${d.title}`}
-                  >
-                    <Thumb id={d.id} />
-                  </button>
+          <WifiRow network={network} />
+          {filterBar}
 
-                  <button className="lib-info" onClick={() => (done ? play(d) : setItemMenu(d))}>
-                    <span className="lib-title">{d.title}</span>
-                    {done ? (
-                      <>
-                        <span className="lib-meta">
-                          <span>{formatBytes(d.size)}</span>
-                          <span className="lib-status" style={{ gap: 6 }}>
-                            <span className="check">
-                              <Check size={11} strokeWidth={3} />
-                            </span>
-                            Completed
-                          </span>
-                        </span>
-                        {d.seconds > 0 && (
-                          <span className="lib-meta">{formatDuration(d.seconds)}</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {(() => {
-                          const line = progressLine(d, pct);
-                          return (
-                            <span className="lib-meta">
-                              {line.bad ? (
-                                <span style={{ color: 'var(--danger)' }}>{line.text}</span>
-                              ) : line.wifi ? (
-                                <span className="dl-waiting">
-                                  <Wifi size={13} /> {line.text}
-                                </span>
-                              ) : (
-                                <span>{line.text}</span>
-                              )}
-                            </span>
-                          );
-                        })()}
-                        {d.status === 'downloading' && (
-                          <span className="lib-meta dl-speed">{speedLine(d)}</span>
-                        )}
-                        <span className="progress" style={{ display: 'block', width: '100%' }}>
-                          <span style={{ display: 'block', width: `${pct}%` }} />
-                        </span>
-                      </>
-                    )}
-                  </button>
-
-                  {done ? (
-                    <button className="lib-play" onClick={() => play(d)} aria-label={`Play ${d.title}`}>
-                      <Play size={20} fill="currentColor" />
-                    </button>
-                  ) : d.status === 'downloading' ? (
-                    <button className="lib-play" onClick={() => pauseDownload(d.id)} aria-label="Pause download">
-                      <Pause size={20} fill="currentColor" />
-                    </button>
-                  ) : (
-                    <button
-                      className="lib-play"
-                      onClick={() => resumeDownload(d.id, true)}
-                      aria-label={
-                        d.waitingWifi
-                          ? 'Download now on mobile data'
-                          : d.status === 'error'
-                            ? 'Try again'
-                            : 'Resume download'
-                      }
-                    >
-                      <RotateCw size={20} />
-                    </button>
-                  )}
-
-                  <button
-                    className="icon-btn lib-more"
-                    onClick={() => setItemMenu(d)}
-                    aria-label={`Options for ${d.title}`}
-                  >
-                    <MoreVertical size={22} />
-                  </button>
-                </article>
-              );
-            })}
-          </div>
+          {visible.length === 0 ? (
+            <EmptyState
+              icon={Film}
+              title={filter === 'tv' ? 'No series downloaded' : 'No movies downloaded'}
+              text="Downloads of this type will show up here."
+            />
+          ) : (
+            <>
+              {unfinished.length > 0 && (
+                <section className="dl-section">
+                  <h2 className="dl-section-title">
+                    Downloading <span>{unfinished.length}</span>
+                  </h2>
+                  <div className="lib-list">{unfinished.map(activeCard)}</div>
+                </section>
+              )}
+              {finished.length > 0 && (
+                <section className="dl-section">
+                  <h2 className="dl-section-title">
+                    Ready to watch <span>{finished.length}</span>
+                  </h2>
+                  <div className="lib-list">{finished.map(doneCard)}</div>
+                </section>
+              )}
+            </>
+          )}
         </>
       )}
 
@@ -445,7 +481,7 @@ export default function Downloads() {
                     setMenuOpen(false);
                   }}
                 >
-                  <RotateCw size={20} /> Resume all
+                  <Play size={20} /> Resume all
                 </button>
               )}
               <div className="sep" />
@@ -484,29 +520,22 @@ export default function Downloads() {
                   <Play size={20} /> Play
                 </button>
               )}
-              {menuItem.status === 'downloading' && (
+              {menuItem.status !== 'completed' && (
                 <button
                   onClick={() => {
-                    pauseDownload(menuItem.id);
+                    runAction(menuItem);
                     setItemMenu(null);
                   }}
                 >
-                  <Pause size={20} /> Pause
-                </button>
-              )}
-              {(menuItem.status === 'paused' || menuItem.status === 'error') && (
-                <button
-                  onClick={() => {
-                    resumeDownload(menuItem.id, true);
-                    setItemMenu(null);
-                  }}
-                >
-                  <RotateCw size={20} />
-                  {menuItem.waitingWifi
-                    ? 'Download now on mobile data'
-                    : menuItem.status === 'error'
-                      ? 'Try again'
-                      : 'Resume'}
+                  {(() => {
+                    const action = actionOf(menuItem);
+                    const ActionIcon = action.Icon;
+                    return (
+                      <>
+                        <ActionIcon size={20} /> {action.id === 'data' ? 'Download now on mobile data' : action.label}
+                      </>
+                    );
+                  })()}
                 </button>
               )}
               <a
@@ -582,4 +611,4 @@ export default function Downloads() {
       )}
     </div>
   );
-                              }
+        }         
