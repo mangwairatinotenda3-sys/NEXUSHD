@@ -61,6 +61,12 @@ export const tmdb = {
   // one season with all its episodes
   tvSeason: (id, season) => tmdbRequest(`tv/${id}/season/${season}`),
 
+  // browse with filters (kind: 'movie' | 'tv'); both kinds come back in the same shape
+  discover: async (kind, params = {}, page = 1) => {
+    const data = await tmdbRequest(`discover/${kind}`, { ...params, page });
+    return mapResults(data, kind === 'tv' ? asTv : (item) => ({ ...item, media_type: 'movie' }));
+  },
+
   // where a movie or series can be watched, for every country (kind: 'movie' | 'tv')
   watchProviders: (kind, id) => tmdbRequest(`${kind}/${id}/watch/providers`),
 };
@@ -95,4 +101,4 @@ export function useMovies(fetcher, deps = []) {
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
   return { ...state, reload };
-                          }
+    }
