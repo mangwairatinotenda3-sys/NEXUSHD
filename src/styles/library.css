@@ -1,3 +1,6 @@
+/* ---------- Library, Downloads and Coming soon: shared look ---------- */
+
+/* chips (used by Downloads and Coming soon) */
 .lib-chips {
   display: flex;
   gap: 10px;
@@ -12,18 +15,26 @@
 
 .lib-chip {
   flex-shrink: 0;
-  padding: 10px 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 22px;
   border-radius: 999px;
   border: 1px solid var(--card-border);
   background: var(--card);
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   transition: background 0.2s, color 0.2s, transform 0.15s;
 }
 
 .lib-chip:active {
   transform: scale(0.95);
+}
+
+.lib-chip.small {
+  padding: 8px 18px;
+  font-size: 14px;
 }
 
 .lib-chip.on {
@@ -33,10 +44,178 @@
   box-shadow: 0 6px 20px rgba(109, 28, 240, 0.4);
 }
 
+.ml-tab-n {
+  min-width: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.lib-chip.on .ml-tab-n {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* collections: My List, Watched and your own lists */
+.lib-collections {
+  display: flex;
+  gap: 12px;
+  padding: 4px 16px 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.lib-collections::-webkit-scrollbar {
+  display: none;
+}
+
+.lib-coll,
+.lib-coll-sk {
+  flex: 0 0 132px;
+  scroll-snap-align: start;
+  border-radius: 20px;
+}
+
+.lib-coll-sk {
+  height: 108px;
+}
+
+.lib-coll {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  text-align: left;
+  transition: transform 0.15s, background 0.25s, box-shadow 0.25s;
+}
+
+.lib-coll:active {
+  transform: scale(0.96);
+}
+
+.lib-coll b {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-coll > span:last-child {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.lib-coll-ico {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary-bright);
+}
+
+.lib-coll-ico .ml-emoji {
+  font-size: 20px;
+}
+
+.lib-coll.on {
+  border-color: transparent;
+  background: linear-gradient(145deg, #8433f7, #4f12d6);
+  box-shadow: 0 10px 26px rgba(109, 28, 240, 0.42);
+  color: #fff;
+}
+
+.lib-coll.on > span:last-child {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.lib-coll.on .lib-coll-ico {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.lib-coll-new {
+  border-style: dashed;
+  background: transparent;
+}
+
+.lib-coll-new .lib-coll-ico {
+  color: var(--primary-bright);
+}
+
+/* the bar under the collections: type, sort, grid or list */
+.lib-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px 12px;
+}
+
+.lib-seg {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+}
+
+.lib-seg button {
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+
+.lib-seg button.on {
+  background: var(--primary);
+  color: #fff;
+}
+
+.lib-tool {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  transition: transform 0.15s, background 0.2s;
+}
+
+.lib-tool:active {
+  transform: scale(0.92);
+  background: var(--primary-soft);
+}
+
+.lib-sort {
+  margin-left: auto;
+}
+
 .lib-count {
   padding: 0 20px 10px;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+.lib-count b {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .lib-banner {
@@ -62,6 +241,145 @@
   font-weight: 600;
 }
 
+/* poster grid */
+.lib-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 14px;
+  padding: 0 16px;
+}
+
+.lib-poster {
+  min-width: 0;
+  animation: lib-in 0.35s ease both;
+}
+
+.lib-poster-img {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 18px;
+  background: var(--skeleton-a);
+  overflow: hidden;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s;
+}
+
+.lib-poster-img:active {
+  transform: scale(0.97);
+}
+
+.lib-poster-img img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.lib-poster-img img.loaded {
+  opacity: 1;
+}
+
+.lib-poster-img .poster-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.lib-shade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 38%;
+  background: linear-gradient(to top, rgba(7, 4, 15, 0.7), transparent);
+  pointer-events: none;
+}
+
+.lib-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(7, 4, 15, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.lib-badge.rate {
+  top: 8px;
+  left: 8px;
+}
+
+.lib-badge.rate svg {
+  color: #fbbf24;
+}
+
+.lib-badge.seen {
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  justify-content: center;
+  padding: 0;
+  background: var(--primary-bright);
+}
+
+.lib-badge.tv {
+  bottom: 8px;
+  left: 8px;
+  font-size: 11px;
+}
+
+.lib-poster-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.lib-poster-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+}
+
+.lib-poster .lib-title {
+  display: -webkit-box;
+  font-size: 14.5px;
+  line-height: 1.25;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.lib-sub {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.lib-poster .lib-more {
+  align-self: flex-start;
+  width: 34px;
+  height: 34px;
+  margin: -4px -6px 0 0;
+}
+
+/* list rows (also used by Downloads) */
 .lib-list {
   display: flex;
   flex-direction: column;
@@ -208,6 +526,10 @@
   margin-left: 2px;
 }
 
+.lib-play.plain svg {
+  margin-left: 0;
+}
+
 .lib-play:active {
   transform: scale(0.92);
   background: rgba(109, 28, 240, 0.5);
@@ -222,6 +544,19 @@
 
 .lib-sk-card {
   animation: none;
+}
+
+@media (min-width: 560px) {
+  .app-shell .lib-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+@media (min-width: 700px) {
+  .app-shell .lib-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  }
 }
 
 /* ---------- Option sheets ---------- */
@@ -270,4 +605,4 @@
   margin-left: 16px;
   color: var(--primary-bright);
   font-weight: 700;
-}
+  }
