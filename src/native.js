@@ -3,10 +3,14 @@ import { App } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { BACK_EVENT } from './services/welcome.js';
+import { lockAppOrientation } from './services/orientation.js';
 
 /* Native touches for the Android app. On the web this does nothing. */
 
 if (Capacitor.isNativePlatform()) {
+  // The whole app stays in portrait on phones; the video player turns to landscape by itself
+  lockAppOrientation();
+
   // Status bar follows the app theme
   const applyTheme = () => {
     const light = document.documentElement.getAttribute('data-theme') === 'light';
@@ -63,4 +67,4 @@ if (Capacitor.isNativePlatform()) {
     },
     true
   );
-}
+                       }
