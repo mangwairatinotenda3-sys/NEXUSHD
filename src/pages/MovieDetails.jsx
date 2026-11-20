@@ -13,17 +13,31 @@ import {
   Tv,
   User,
   WifiOff,
+  Bell,
+  BellRing,
+  Eye,
+  ListPlus,
 } from 'lucide-react';
 import Header from '../components/Header.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import EpisodeList from '../components/EpisodeList.jsx';
 import WhereToWatch from '../components/WhereToWatch.jsx';
+import ListSheet from '../components/ListSheet.jsx';
+import RemindSheet from '../components/RemindSheet.jsx';
+import YourTake from '../components/YourTake.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import TrailerPlayer from '../components/TrailerPlayer.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import useDownloads, { getPlayableUrl } from '../services/downloadManager.js';
+import { useWatched } from '../services/mylists.js';
+import useReminders, {
+  countdownText,
+  followReleaseDate,
+  formatDay,
+  isUnreleased,
+} from '../services/reminders.js';
 import { FREE_FILMS, archivePage, loadFilm, searchFreeFilms } from '../services/archive.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/details.css';
@@ -98,6 +112,10 @@ export default function MovieDetails({ kind = 'movie' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { has, toggle } = useWatchlist();
+  const watched = useWatched();
+  const reminders = useReminders();
+  const [listOpen, setListOpen] = useState(false);
+  const [remindOpen, setRemindOpen] = useState(false);
   const { items: downloads } = useDownloads();
   const [progress, setProgress] = useLocalStorage('nexushd:free-progress', {});
   const [trailerOpen, setTrailerOpen] = useState(false);
@@ -117,6 +135,12 @@ export default function MovieDetails({ kind = 'movie' }) {
     [dTitle, dYear, isTv]
   );
 
+  const detailsData = details.data;
+  // a release date can move: keep an existing reminder in step with it
+  useEffect(() => {
+    if (detailsData) followReleaseDate({ ...detailsData, media_type: kind });
+  }, [detailsData, kind]);
+
   const back = () => (window.history.length > 1 ? navigate(-1) : navigate('/'));
 
   const showToast = (message) => {
@@ -132,6 +156,8 @@ export default function MovieDetails({ kind = 'movie' }) {
     setExpanded(false);
     setTrailerOpen(false);
     setFreePlayer(null);
+    setListOpen(false);
+    setRemindOpen(false);
   }, [id, kind]);
 
   const playFree = async () => {
@@ -211,6 +237,9 @@ export default function MovieDetails({ kind = 'movie' }) {
   const runtime = formatRuntime(m.runtime);
   const seasons = m.number_of_seasons || 0;
   const saved = has(m.id, kind);
+  const unreleased = isUnreleased(m.release_date);
+  const seen = watched.has(m.id, kind);
+  const reminder = reminders.get(m.id, kind);
   const longText = (m.overview || '').length > 180;
   const heroImg = imageUrl(m.backdrop_path, 'w780') || imageUrl(m.poster_path, 'w500');
   const freeFilm = free.data;
@@ -222,6 +251,11 @@ export default function MovieDetails({ kind = 'movie' }) {
   const onToggleSave = () => {
     const added = toggle(m);
     showToast(added ? 'Added to My List' : 'Removed from My List');
+  };
+
+  const onToggleWatched = () => {
+    const now = watched.toggle(m);
+    showToast(now ? 'Marked as watched' : 'Removed from Watched');
   };
 
   const onShare = async () => {
@@ -238,7 +272,7 @@ export default function MovieDetails({ kind = 'movie' }) {
     }
   };
 
-  return (
+    return (
     <div className="page">
       <div className="d-hero">
         {heroImg && <img src={heroImg} alt="" />}
@@ -278,6 +312,11 @@ export default function MovieDetails({ kind = 'movie' }) {
                 <span>
                   <Clock size={14} />
                   {runtime}
+                </span>
+              )}
+              {unreleased && (
+                <span className="ml-soon">
+                  {formatDay(m.release_date)} · {countdownText(m.release_date)}
                 </span>
               )}
               {isTv && seasons > 0 && (
@@ -344,7 +383,33 @@ export default function MovieDetails({ kind = 'movie' }) {
           </button>
         </div>
 
+        <div className="ml-actions">
+          <button className="ml-pill" onClick={() => setListOpen(true)}>
+            <ListPlus size={18} /> Save to…
+          </button>
+          {unreleased ? (
+            <button
+              className={`ml-pill ${reminder ? 'on' : ''}`}
+              onClick={() => setRemindOpen(true)}
+              aria-pressed={Boolean(reminder)}
+            >
+              {reminder ? <BellRing size={18} /> : <Bell size={18} />}
+              {reminder ? 'Reminder on' : 'Remind me'}
+            </button>
+          ) : (
+            <button
+              className={`ml-pill ${seen ? 'on' : ''}`}
+              onClick={onToggleWatched}
+              aria-pressed={seen}
+            >
+              <Eye size={18} /> {seen ? 'Watched' : 'Mark watched'}
+            </button>
+          )}
+        </div>
+
         <WhereToWatch key={`${kind}-${m.id}`} kind={kind} id={m.id} />
+
+        {!unreleased && <YourTake key={`${kind}-${m.id}`} movie={m} onToast={showToast} />}
 
         {isTv && (
           <EpisodeList
@@ -416,7 +481,13 @@ export default function MovieDetails({ kind = 'movie' }) {
         />
       )}
 
+      {listOpen && <ListSheet movie={m} onClose={() => setListOpen(false)} onToast={showToast} />}
+
+      {remindOpen && (
+        <RemindSheet movie={m} onClose={() => setRemindOpen(false)} onToast={showToast} />
+      )}
+
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-    }
+      }
