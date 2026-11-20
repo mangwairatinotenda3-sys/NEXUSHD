@@ -42,17 +42,32 @@ export const markVersionSeen = () => write(VERSION_KEY, APP_VERSION);
 export const RELEASES = [
   {
     version: '1.3.0',
-    title: 'Faster downloads, mini player',
+    title: 'Your lists, reminders, better search',
     highlights: [
       {
-        icon: 'gauge',
-        title: 'Speed and time left',
-        text: 'Downloads now show how fast they are going and how long is left.',
+        icon: 'list',
+        title: 'Your own lists',
+        text: 'Make lists like “Weekend picks” and mark what you have watched. They sync to your account.',
       },
       {
-        icon: 'wifi',
-        title: 'Wi-Fi only',
-        text: 'Keep your mobile data safe. Downloads wait for Wi-Fi and carry on by themselves.',
+        icon: 'star',
+        title: 'Ratings and notes',
+        text: 'Give a film stars and write a private note. Only you can see them.',
+      },
+      {
+        icon: 'bell',
+        title: 'Coming soon',
+        text: 'See what is coming out and tap Remind me. We alert you on the day.',
+      },
+      {
+        icon: 'search',
+        title: 'Better search',
+        text: 'Filter by genre, year and rating, and sort the results.',
+      },
+      {
+        icon: 'gauge',
+        title: 'Faster downloads',
+        text: 'See speed and time left, download on Wi-Fi only, and check how much space films use.',
       },
       {
         icon: 'pip',
@@ -63,11 +78,6 @@ export const RELEASES = [
         icon: 'phone',
         title: 'Made for every screen',
         text: 'The app stays upright on your phone and fits tablets and big screens too.',
-      },
-      {
-        icon: 'download',
-        title: 'Tidy your downloads',
-        text: 'See how much space films use, pause or resume all, and remove finished films in one go.',
       },
     ],
   },
