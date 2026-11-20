@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Play, Flame, WifiOff, Film, ChevronRight } from 'lucide-react';
+import { Search, Play, Flame, WifiOff, Film, ChevronRight, Bell } from 'lucide-react';
 import BrandMark from '../components/BrandMark.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import ContinueRow from '../components/ContinueRow.jsx';
 import useHistory, { recordView } from '../hooks/useHistory.js';
+import useReminders from '../services/reminders.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/home.css';
 import '../styles/free.css';
+import '../styles/soon.css';
 
 function Hero({ movies, genreMap, onOpen }) {
   const [index, setIndex] = useState(0);
@@ -91,6 +93,7 @@ function Hero({ movies, genreMap, onOpen }) {
 export default function Home() {
   const navigate = useNavigate();
   const history = useHistory();
+  const reminders = useReminders();
   const [genreId, setGenreId] = useState(null);
 
   const trending = useMovies(() => tmdb.trending());
@@ -137,9 +140,19 @@ export default function Home() {
             NEXUS<span className="accent">HD</span>
           </span>
         </div>
-        <button className="icon-btn" onClick={() => navigate('/search')} aria-label="Search">
-          <Search size={24} />
-        </button>
+        <div className="home-actions">
+          <button
+            className="icon-btn home-bell"
+            onClick={() => navigate('/soon')}
+            aria-label="Coming soon and reminders"
+          >
+            <Bell size={24} />
+            {reminders.waiting.length > 0 && <span className="home-dot" />}
+          </button>
+          <button className="icon-btn" onClick={() => navigate('/search')} aria-label="Search">
+            <Search size={24} />
+          </button>
+        </div>
       </header>
 
       {failed ? (
@@ -246,6 +259,7 @@ export default function Home() {
             movies={upcoming.data?.results}
             loading={upcoming.loading}
             onOpen={open}
+            onSeeAll={() => navigate('/soon')}
           />
         </>
       )}
