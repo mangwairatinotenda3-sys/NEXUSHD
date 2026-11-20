@@ -41,6 +41,37 @@ export const markVersionSeen = () => write(VERSION_KEY, APP_VERSION);
    each release that should show the "What's new" sheet once. */
 export const RELEASES = [
   {
+    version: '1.3.0',
+    title: 'Faster downloads, mini player',
+    highlights: [
+      {
+        icon: 'gauge',
+        title: 'Speed and time left',
+        text: 'Downloads now show how fast they are going and how long is left.',
+      },
+      {
+        icon: 'wifi',
+        title: 'Wi-Fi only',
+        text: 'Keep your mobile data safe. Downloads wait for Wi-Fi and carry on by themselves.',
+      },
+      {
+        icon: 'pip',
+        title: 'Mini player',
+        text: 'Leave the app while a film plays and it keeps going in a small window.',
+      },
+      {
+        icon: 'phone',
+        title: 'Made for every screen',
+        text: 'The app stays upright on your phone and fits tablets and big screens too.',
+      },
+      {
+        icon: 'download',
+        title: 'Tidy your downloads',
+        text: 'See how much space films use, pause or resume all, and remove finished films in one go.',
+      },
+    ],
+  },
+  {
     version: '1.2.0',
     title: 'Welcome, where to watch, feedback',
     highlights: [
