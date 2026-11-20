@@ -113,6 +113,9 @@ jobs:
           console.log(xml);
           EOF
 
+      - name: Picture-in-picture and portrait for the Android app
+        run: node scripts/android-native.mjs
+
       - name: Notification icon
         run: |
           mkdir -p android/app/src/main/res/drawable
