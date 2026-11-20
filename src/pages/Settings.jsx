@@ -13,6 +13,8 @@ import {
   Sparkles,
   Compass,
   MessageSquare,
+  PictureInPicture2,
+  Wifi,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
@@ -22,6 +24,8 @@ import useLocalStorage from '../hooks/useLocalStorage.js';
 import useHistory from '../hooks/useHistory.js';
 import { useApp } from '../context/AppContext.jsx';
 import { ensureNotificationPermission } from '../services/notify.js';
+import useNetwork, { setWifiOnly } from '../services/network.js';
+import { autoPipEnabled, pipAvailable, setAutoPip } from '../services/pip.js';
 import { openWelcome } from '../services/welcome.js';
 import { APP_VERSION, BUILD, checkForUpdate, updatesSupported } from '../services/update.js';
 import '../styles/update.css';
@@ -36,6 +40,19 @@ export default function Settings() {
   const [checking, setChecking] = useState(false);
   const [update, setUpdate] = useState(null);
   const toastTimer = useRef(null);
+  const network = useNetwork();
+  const [pipOk, setPipOk] = useState(false);
+  const [autoPip, setAutoPipState] = useState(autoPipEnabled);
+
+  useEffect(() => {
+    let off = false;
+    pipAvailable().then((ok) => {
+      if (!off) setPipOk(ok);
+    });
+    return () => {
+      off = true;
+    };
+  }, []);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -57,6 +74,13 @@ export default function Settings() {
       return;
     }
     setNotifications(true);
+  };
+
+  const toggleAutoPip = () => {
+    const next = !autoPip;
+    setAutoPip(next);
+    setAutoPipState(next);
+    showToast(next ? 'Mini player is on' : 'Mini player is off');
   };
 
   const checkUpdates = async () => {
@@ -147,6 +171,27 @@ export default function Settings() {
             <span className="row-label">Check for updates</span>
             <span className="row-status">{checking ? 'Checking…' : ''}</span>
             <ChevronRight size={20} className="muted" />
+          </button>
+        )}
+      </div>
+
+      <div className="card">
+        <button
+          className="row"
+          onClick={() => setWifiOnly(!network.wifiOnly)}
+          role="switch"
+          aria-checked={network.wifiOnly}
+        >
+          <Wifi size={22} />
+          <span className="row-label">Download on Wi-Fi only</span>
+          <span className={`switch ${network.wifiOnly ? 'on' : ''}`} />
+        </button>
+
+        {pipOk && (
+          <button className="row" onClick={toggleAutoPip} role="switch" aria-checked={autoPip}>
+            <PictureInPicture2 size={22} />
+            <span className="row-label">Mini player when I leave the app</span>
+            <span className={`switch ${autoPip ? 'on' : ''}`} />
           </button>
         )}
       </div>
