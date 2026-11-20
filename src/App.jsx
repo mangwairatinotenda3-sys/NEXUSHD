@@ -10,6 +10,7 @@ import Downloads from './pages/Downloads.jsx';
 import Profile from './pages/Profile.jsx';
 import Settings from './pages/Settings.jsx';
 import Legal from './pages/Legal.jsx';
+import ComingSoon from './pages/ComingSoon.jsx';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/movie/:id" element={<MovieDetails kind="movie" />} />
           <Route path="/tv/:id" element={<MovieDetails kind="tv" />} />
+          <Route path="/soon" element={<ComingSoon />} />
           <Route path="/free" element={<FreeFilms />} />
           <Route path="/library" element={<Library />} />
           <Route path="/downloads" element={<Downloads />} />
@@ -31,4 +33,4 @@ export default function App() {
       </Routes>
     </AuthProvider>
   );
-            }
+      }
