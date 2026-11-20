@@ -1,15 +1,19 @@
 import {
+  Bell,
   Compass,
   Download,
   Film,
   Gauge,
+  ListPlus,
   MessageSquare,
   PictureInPicture2,
   Play,
   ScreenShare,
+  Search,
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Star,
   Tv2,
   User,
   Users,
@@ -32,6 +36,10 @@ const ICONS = {
   wifi: Wifi,
   pip: PictureInPicture2,
   phone: Smartphone,
+  list: ListPlus,
+  star: Star,
+  bell: Bell,
+  search: Search,
 };
 
 export default function WhatsNew({ release, onClose }) {
