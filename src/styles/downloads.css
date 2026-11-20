@@ -1,61 +1,77 @@
-/* ---------- Downloads: storage, speed and Wi-Fi only ---------- */
-.dl-card {
-  margin: 0 16px 14px;
-  padding: 16px;
-  border-radius: 20px;
-  background: var(--card);
-  border: 1px solid var(--card-border);
+/* ---------- Downloads: storage, speed, Wi-Fi only and the cards ---------- */
+
+/* the summary card at the top */
+.dl-hero {
+  margin: 4px 16px 12px;
+  padding: 18px;
+  border-radius: 24px;
+  color: #fff;
+  background: linear-gradient(145deg, #8433f7, #4f12d6 70%);
+  box-shadow: 0 14px 34px rgba(109, 28, 240, 0.4);
 }
 
-.dl-storage {
+.dl-hero-sk {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  box-shadow: none;
+}
+
+.dl-hero-top {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
-.dl-ico {
+.dl-hero-ico {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 13px;
-  color: var(--primary-bright);
-  background: var(--primary-soft);
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.dl-storage-text {
+.dl-hero-text {
   flex: 1;
   min-width: 0;
 }
 
-.dl-storage-text b {
+.dl-hero-text b {
   display: block;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
 
-.dl-storage-text span {
+.dl-hero-text span {
   display: block;
-  margin-top: 1px;
-  font-size: 13px;
-  color: var(--text-muted);
+  margin-top: 3px;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.dl-bar {
+.dl-hero-bar {
   height: 8px;
-  margin-top: 14px;
+  margin-top: 16px;
   border-radius: 99px;
-  background: var(--primary-soft);
+  background: rgba(255, 255, 255, 0.22);
   overflow: hidden;
 }
 
-.dl-bar span {
+.dl-hero-bar span {
   display: block;
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, #7a2cf5, #a855f7);
+  background: #fff;
   transition: width 0.4s ease;
+}
+
+.dl-hero-free {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .dl-live {
@@ -65,31 +81,38 @@
   margin-top: 14px;
   padding: 9px 12px;
   border-radius: 12px;
-  background: var(--primary-soft);
-  color: var(--primary-bright);
+  background: rgba(255, 255, 255, 0.18);
   font-size: 13.5px;
   font-weight: 600;
 }
 
-.dl-wifi {
+/* Wi-Fi only */
+.dl-wifi-row {
   display: flex;
   align-items: center;
   gap: 14px;
-  width: 100%;
-  margin-top: 14px;
-  padding: 12px 12px 12px 14px;
-  border-radius: 14px;
-  background: var(--primary-soft);
+  width: calc(100% - 32px);
+  margin: 0 16px 14px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
   text-align: left;
 }
 
-.dl-wifi:active {
-  filter: brightness(1.08);
+.dl-wifi-row:active {
+  background: var(--primary-soft);
 }
 
-.dl-wifi > svg {
+.dl-wifi-ico {
   flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
   color: var(--primary-bright);
+  background: var(--primary-soft);
 }
 
 .dl-wifi-text {
@@ -114,9 +137,219 @@
   margin-left: auto;
 }
 
-.dl-speed {
+.dl-filter {
+  padding-top: 0;
+}
+
+/* sections */
+.dl-section {
+  margin-bottom: 8px;
+}
+
+.dl-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 0 20px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.dl-section-title span {
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--primary-soft);
   color: var(--primary-bright);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* a download that is not finished */
+.dl-item {
+  align-items: stretch;
+}
+
+.dl-item .lib-thumb {
+  flex-basis: 96px;
+}
+
+.dl-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 8px 12px 0;
+}
+
+.dl-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.dl-title {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+  text-align: left;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.dl-more {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  margin: -6px -2px 0 0;
+}
+
+.dl-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.dl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.dl-pill.live {
+  background: var(--primary-soft);
+  color: var(--primary-bright);
+}
+
+.dl-pill.paused {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+}
+
+.dl-pill.wifi {
+  background: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+}
+
+.dl-pill.error {
+  background: rgba(255, 93, 115, 0.16);
+  color: var(--danger);
+}
+
+.dl-amount {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.dl-progress {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--primary-soft);
+  overflow: hidden;
+}
+
+.dl-progress span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #7a2cf5, #a855f7);
+  transition: width 0.3s ease;
+}
+
+.dl-progress.live span {
+  background-size: 200% 100%;
+  animation: dl-shine 1.6s linear infinite;
+  background-image: linear-gradient(90deg, #7a2cf5, #c084fc, #7a2cf5);
+}
+
+@keyframes dl-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.dl-progress.paused span {
+  background: #f59e0b;
+}
+
+.dl-progress.wifi span {
+  background: #60a5fa;
+}
+
+.dl-progress.error span {
+  background: var(--danger);
+}
+
+.dl-error {
+  color: var(--danger);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.dl-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+}
+
+.dl-speed {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--primary-bright);
+  font-size: 12.5px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the button that says what tapping it does */
+.dl-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--primary-soft);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: transform 0.15s, filter 0.2s;
+}
+
+.dl-action:active {
+  transform: scale(0.94);
+}
+
+.dl-action.resume,
+.dl-action.data {
+  border-color: transparent;
+  background: var(--primary);
+  color: #fff;
+}
+
+.dl-action.retry {
+  border-color: transparent;
+  background: rgba(255, 93, 115, 0.16);
+  color: var(--danger);
 }
 
 .dl-waiting {
@@ -125,4 +358,10 @@
   gap: 6px;
   color: var(--primary-bright);
   font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dl-progress.live span {
+    animation: none;
+  }
   }
