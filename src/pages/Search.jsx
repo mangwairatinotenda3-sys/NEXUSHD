@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   Search as SearchIcon,
+  SlidersHorizontal,
   X,
   Clock,
   Star,
@@ -10,13 +11,23 @@ import {
   WifiOff,
 } from 'lucide-react';
 import EmptyState from '../components/EmptyState.jsx';
+import SearchFilters, {
+  NO_FILTERS,
+  SORT_OPTIONS,
+  filtersActive,
+} from '../components/SearchFilters.jsx';
 import { MovieCard } from '../components/MovieRow.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import { recordView } from '../hooks/useHistory.js';
+import { GENRES, RATINGS, YEARS, matchesGenre, matchesYear } from '../services/genres.js';
 import { tmdb, tmdbRequest, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/details.css';
+import '../styles/library.css';
+import '../styles/search.css';
 
 const MAX_RECENT = 8;
+// with filters on, stop looking for more matches after this many pages
+const MAX_FILTERED_PAGES = 8;
 
 const TYPES = [
   { id: 'all', label: 'All' },
@@ -41,7 +52,74 @@ async function searchTitles(term, page) {
   return { results, totalPages: data.total_pages || 1 };
 }
 
+const isoToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/* The filters, written the way TMDB wants them for one kind (movie or tv) */
+function discoverParams(kind, filters, sort) {
+  const params = {};
+  const genre = GENRES.find((g) => g.id === filters.genre);
+  if (genre?.[kind]) params.with_genres = genre[kind];
+
+  const dateKey = kind === 'tv' ? 'first_air_date' : 'primary_release_date';
+  const range = YEARS.find((y) => y.id === filters.year);
+  let upTo = range?.to ? `${range.to}-12-31` : '';
+  if (range?.from) params[`${dateKey}.gte`] = `${range.from}-01-01`;
+
+  if (filters.rating) {
+    params['vote_average.gte'] = filters.rating;
+    params['vote_count.gte'] = 100;
+  }
+  if (sort === 'rating') {
+    params.sort_by = 'vote_average.desc';
+    params['vote_count.gte'] = Math.max(params['vote_count.gte'] || 0, 300);
+  } else if (sort === 'newest') {
+    params.sort_by = `${dateKey}.desc`;
+    // titles that are not out yet do not belong in "newest"
+    const today = isoToday();
+    if (!upTo || upTo > today) upTo = today;
+    params['vote_count.gte'] = Math.max(params['vote_count.gte'] || 0, 20);
+  } else {
+    params.sort_by = 'popularity.desc';
+  }
+  if (upTo) params[`${dateKey}.lte`] = upTo;
+  return params;
+}
+
+/* One page of browsing with no search words, from movies, series or both */
+async function browsePage(type, filters, sort, page) {
+  const genre = GENRES.find((g) => g.id === filters.genre);
+  const kinds = (type === 'all' ? ['movie', 'tv'] : [type]).filter(
+    (k) => !genre || genre[k] != null
+  );
+  if (kinds.length === 0) return { results: [], totalPages: 1 };
+
+  const answers = await Promise.all(
+    kinds.map((k) => tmdb.discover(k, discoverParams(k, filters, sort), page).catch(() => null))
+  );
+  if (answers.every((a) => !a)) throw new Error('Browse failed');
+  return {
+    results: answers.flatMap((a) => (a ? a.results || [] : [])),
+    totalPages: Math.min(500, Math.max(...answers.map((a) => (a ? a.total_pages || 1 : 1)))),
+  };
+}
+
+const dateOf = (m) => Date.parse(m.release_date) || 0;
+
+/* Ordering done here, on what has been loaded. "Best match" keeps TMDB's order. */
+function sortItems(list, sort, browsing) {
+  const out = [...list];
+  if (sort === 'rating') out.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+  else if (sort === 'newest') out.sort((a, b) => dateOf(b) - dateOf(a));
+  else if (sort === 'title') out.sort((a, b) => a.title.localeCompare(b.title));
+  else if (browsing) out.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  return out;
+}
+
 const pathOf = (m) => `/${m.media_type === 'tv' ? 'tv' : 'movie'}/${m.id}`;
+const keyOf = (m) => `${m.media_type}-${m.id}`;
 
 function SkeletonGrid({ count }) {
   return (
@@ -60,11 +138,14 @@ export default function Search() {
   const navigate = useNavigate();
   const inputRef = useRef(null);
   const sentinelRef = useRef(null);
-  const termRef = useRef('');
+  const requestRef = useRef('');
 
   const [query, setQuery] = useState('');
   const [term, setTerm] = useState('');
   const [type, setType] = useState('all');
+  const [filters, setFilters] = useState(NO_FILTERS);
+  const [sort, setSort] = useState('default');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [retry, setRetry] = useState(0);
   const [results, setResults] = useState([]);
   const [page, setPage] = useState(1);
@@ -75,7 +156,22 @@ export default function Search() {
   const [recent, setRecent] = useLocalStorage('nexushd:recent-searches', []);
   const trending = useMovies(() => tmdb.trending());
 
-  termRef.current = term;
+  const trimmed = query.trim();
+  const active = filtersActive(filters);
+  // text = searching for words; browse = no words, only filters or an order
+  const mode = term ? 'text' : active || sort !== 'default' ? 'browse' : 'idle';
+  const browsing = mode === 'browse';
+  const idle = !trimmed && mode === 'idle';
+  const pending = trimmed !== term && Boolean(trimmed);
+
+  // what a request depends on: when it changes, start again from page 1
+  const requestKey =
+    mode === 'text'
+      ? `text|${term}`
+      : mode === 'browse'
+        ? `browse|${type}|${filters.genre}|${filters.year}|${filters.rating}|${sort}`
+        : 'idle';
+  requestRef.current = requestKey;
 
   useEffect(() => {
     document.body.classList.add('hide-nav');
@@ -88,8 +184,15 @@ export default function Search() {
     return () => clearTimeout(t);
   }, [query]);
 
+  const fetchPage = useCallback(
+    (n) =>
+      mode === 'text' ? searchTitles(term, n) : browsePage(type, filters, sort, n),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requestKey]
+  );
+
   useEffect(() => {
-    if (!term) {
+    if (mode === 'idle') {
       setResults([]);
       setLoading(false);
       setError(false);
@@ -100,7 +203,8 @@ export default function Search() {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    searchTitles(term, 1)
+    setResults([]);
+    fetchPage(1)
       .then((data) => {
         if (cancelled) return;
         setResults(data.results);
@@ -116,27 +220,44 @@ export default function Search() {
     return () => {
       cancelled = true;
     };
-  }, [term, retry]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestKey, retry]);
+
+  const pageLimit = mode === 'text' && active ? MAX_FILTERED_PAGES : 500;
+  const hasMore = page < Math.min(totalPages, pageLimit);
 
   const loadMore = useCallback(() => {
-    if (loadingMore || loading || page >= totalPages || !term) return;
-    const forTerm = term;
+    if (loadingMore || loading || !hasMore || mode === 'idle') return;
+    const forKey = requestKey;
     setLoadingMore(true);
-    searchTitles(forTerm, page + 1)
+    fetchPage(page + 1)
       .then((data) => {
-        if (termRef.current !== forTerm) return;
+        if (requestRef.current !== forKey) return;
         setResults((prev) => {
-          const seen = new Set(prev.map((m) => `${m.media_type}-${m.id}`));
-          return [...prev, ...data.results.filter((m) => !seen.has(`${m.media_type}-${m.id}`))];
+          const seen = new Set(prev.map(keyOf));
+          return [...prev, ...data.results.filter((m) => !seen.has(keyOf(m)))];
         });
         setPage((p) => p + 1);
       })
       .catch(() => {})
       .finally(() => setLoadingMore(false));
-  }, [loadingMore, loading, page, totalPages, term]);
+  }, [loadingMore, loading, hasMore, mode, requestKey, fetchPage, page]);
 
-  const visible = results.filter((m) => type === 'all' || m.media_type === type);
-  const hasMore = page < totalPages;
+  const visible = useMemo(() => {
+    let list = results;
+    if (mode === 'text') {
+      const genre = GENRES.find((g) => g.id === filters.genre);
+      const range = YEARS.find((y) => y.id === filters.year);
+      list = list.filter(
+        (m) =>
+          (type === 'all' || m.media_type === type) &&
+          matchesGenre(m, genre) &&
+          matchesYear(m, range) &&
+          (!filters.rating || (m.vote_average || 0) >= filters.rating)
+      );
+    }
+    return sortItems(list, sort, browsing);
+  }, [results, mode, type, filters, sort, browsing]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -147,7 +268,7 @@ export default function Search() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore, results.length, type]);
+  }, [loadMore, results.length, visible.length]);
 
   const saveRecent = (t) => {
     if (!t) return;
@@ -172,10 +293,43 @@ export default function Search() {
     inputRef.current?.blur();
   };
 
-  const trimmed = query.trim();
-  const pending = trimmed !== term;
-  const idle = !trimmed && !term;
+  const resetFilters = () => {
+    setFilters(NO_FILTERS);
+    setSort('default');
+  };
 
+  const activeCount = (filters.genre ? 1 : 0) + (filters.year !== 'any' ? 1 : 0) + (filters.rating ? 1 : 0);
+  const sortName = SORT_OPTIONS(browsing).find((s) => s.id === sort)?.label;
+  const genreName = GENRES.find((g) => g.id === filters.genre)?.label;
+  const yearName = YEARS.find((y) => y.id === filters.year)?.label;
+  const ratingName = RATINGS.find((r) => r.id === filters.rating)?.label;
+
+  const summary = (activeCount > 0 || sort !== 'default') && (
+    <div className="sf-summary" aria-label="Active filters">
+      {filters.genre && (
+        <button onClick={() => setFilters({ ...filters, genre: null })}>
+          {genreName} <X size={13} />
+        </button>
+      )}
+      {filters.year !== 'any' && (
+        <button onClick={() => setFilters({ ...filters, year: 'any' })}>
+          {yearName} <X size={13} />
+        </button>
+      )}
+      {filters.rating > 0 && (
+        <button onClick={() => setFilters({ ...filters, rating: 0 })}>
+          Rated {ratingName} <X size={13} />
+        </button>
+      )}
+      {sort !== 'default' && (
+        <button onClick={() => setSort('default')}>
+          {sortName} <X size={13} />
+        </button>
+      )}
+    </div>
+  );
+
+  const nothing = visible.length === 0 && !hasMore;
   return (
     <div className="page">
       <form className="search-bar" onSubmit={submit}>
@@ -208,6 +362,15 @@ export default function Search() {
             </button>
           )}
         </label>
+        <button
+          type="button"
+          className={`icon-btn sf-open ${activeCount > 0 || sort !== 'default' ? 'on' : ''}`}
+          onClick={() => setSheetOpen(true)}
+          aria-label="Filter and sort"
+        >
+          <SlidersHorizontal size={22} />
+          {activeCount > 0 && <span className="sf-badge">{activeCount}</span>}
+        </button>
       </form>
 
       {!idle && (
@@ -225,6 +388,8 @@ export default function Search() {
           ))}
         </div>
       )}
+
+      {summary}
 
       {idle ? (
         <>
@@ -258,6 +423,19 @@ export default function Search() {
               </div>
             </div>
           )}
+
+          <div className="search-section">
+            <div className="search-section-head">
+              <h2>Browse by genre</h2>
+            </div>
+            <div className="sf-genres">
+              {GENRES.map((g) => (
+                <button key={g.id} onClick={() => setFilters({ ...filters, genre: g.id })}>
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="search-section">
             <div className="search-section-head">
@@ -308,22 +486,28 @@ export default function Search() {
           actionLabel="Try again"
           onAction={() => setRetry((n) => n + 1)}
         />
-      ) : visible.length === 0 && !hasMore ? (
+      ) : nothing ? (
         <EmptyState
           icon={SearchX}
           title="No results"
           text={
-            type === 'all'
-              ? `We couldn't find anything for "${term}". Try a different title.`
-              : `No ${type === 'tv' ? 'series' : 'movies'} found for "${term}". Try another filter.`
+            active || sort !== 'default'
+              ? mode === 'browse' && filters.genre && type === 'tv'
+                ? `There is no series category for ${genreName}. Try Movies or All.`
+                : 'Nothing matches these filters. Try fewer filters.'
+              : type === 'all'
+                ? `We couldn't find anything for "${term}". Try a different title.`
+                : `No ${type === 'tv' ? 'series' : 'movies'} found for "${term}". Try another filter.`
           }
+          actionLabel={active || sort !== 'default' ? 'Reset filters' : undefined}
+          onAction={resetFilters}
         />
       ) : (
         <>
           {visible.length > 0 && (
             <div className="grid">
               {visible.map((m) => (
-                <MovieCard key={`${m.media_type}-${m.id}`} movie={m} onOpen={openMovie} />
+                <MovieCard key={keyOf(m)} movie={m} onOpen={openMovie} />
               ))}
             </div>
           )}
@@ -331,6 +515,19 @@ export default function Search() {
           {(loadingMore || (visible.length === 0 && hasMore)) && <SkeletonGrid count={3} />}
         </>
       )}
+
+      {sheetOpen && (
+        <SearchFilters
+          filters={filters}
+          sort={sort}
+          browsing={mode !== 'text'}
+          onApply={(f, s) => {
+            setFilters(f);
+            setSort(s);
+          }}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
     </div>
   );
-  }
+              }
