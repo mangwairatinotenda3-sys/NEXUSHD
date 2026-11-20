@@ -2,14 +2,18 @@ import {
   Compass,
   Download,
   Film,
+  Gauge,
   MessageSquare,
+  PictureInPicture2,
   Play,
   ScreenShare,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Tv2,
   User,
   Users,
+  Wifi,
 } from 'lucide-react';
 import '../styles/onboarding.css';
 
@@ -24,6 +28,10 @@ const ICONS = {
   compass: Compass,
   message: MessageSquare,
   user: User,
+  gauge: Gauge,
+  wifi: Wifi,
+  pip: PictureInPicture2,
+  phone: Smartphone,
 };
 
 export default function WhatsNew({ release, onClose }) {
