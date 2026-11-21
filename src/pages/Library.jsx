@@ -17,6 +17,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Share2,
   Star,
   Trash2,
 } from 'lucide-react';
@@ -30,6 +31,8 @@ import useLocalStorage from '../hooks/useLocalStorage.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useMyLists, useReviews, useWatched } from '../services/mylists.js';
 import { imageUrl } from '../services/tmdb.js';
+import { whenOnline } from '../services/connection.js';
+import { shareTitle } from '../services/links.js';
 import '../styles/library.css';
 import '../styles/mylists.css';
 
@@ -197,7 +200,13 @@ export default function Library() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, filter, activeSort, reviews.items]);
 
-  const open = (m) => navigate(pathOf(m));
+  const open = (m) => whenOnline(() => navigate(pathOf(m)));
+
+  const share = async (m) => {
+    const result = await shareTitle(m);
+    if (result === 'copied') showToast('Link copied');
+    else if (result === 'failed') showToast("Couldn't share this title");
+  };
 
   const removeFromView = (m) => {
     const type = typeOf(m);
@@ -231,7 +240,7 @@ export default function Library() {
     </button>
   );
 
-  const collection = (id, icon, name, count, on, onClick) => (
+   const collection = (id, icon, name, count, on, onClick) => (
     <button
       key={id}
       role="tab"
@@ -606,6 +615,15 @@ export default function Library() {
                   </>
                 )}
               </button>
+              <button
+                onClick={() => {
+                  const m = itemMenu;
+                  setItemMenu(null);
+                  share(m);
+                }}
+              >
+                <Share2 size={20} /> Share
+              </button>
               <div className="sep" />
               <button className="danger-text" onClick={() => removeFromView(itemMenu)}>
                 <Trash2 size={20} /> Remove from {viewName}
@@ -696,4 +714,4 @@ export default function Library() {
       {!undo && toast && <div className="toast">{toast}</div>}
     </div>
   );
-                  }
+          }
