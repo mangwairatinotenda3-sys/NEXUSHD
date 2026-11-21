@@ -53,4 +53,207 @@
 
 .net-banner-inner button:active {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* the note on Home while offline */
+.offline-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 32px);
+  margin: 0 16px 14px;
+  padding: 11px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: var(--primary-soft);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.offline-note span {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+}
+
+.offline-note b {
+  color: var(--text);
+}
+
+/* ---------- "No internet connection" prompt ---------- */
+.net-backdrop {
+  z-index: 90;
+}
+
+.net-sheet {
+  text-align: center;
+}
+
+.net-sheet h3 {
+  font-size: 20px;
+  margin-top: 4px;
+}
+
+.net-sheet p {
+  margin-bottom: 18px;
+}
+
+.net-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  margin: 2px auto 12px;
+}
+
+.net-ico {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #8433f7, #4f12d6);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(109, 28, 240, 0.4);
+}
+
+.net-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--primary-bright);
+  opacity: 0;
+  animation: net-pulse 2.4s ease-out infinite;
+}
+
+.net-ring.r2 {
+  animation-delay: 1.2s;
+}
+
+@keyframes net-pulse {
+  from {
+    transform: scale(0.68);
+    opacity: 0.55;
   }
+  to {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+}
+
+.net-still {
+  margin: -6px 0 14px;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  animation: net-shake 0.4s ease;
+}
+
+@keyframes net-shake {
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+.net-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.net-actions .btn-primary,
+.net-actions .btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+}
+
+.net-close {
+  min-height: 42px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.net-spin {
+  animation: net-turn 0.8s linear infinite;
+}
+
+@keyframes net-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- "Open in the app" bar on the web version ---------- */
+.oia {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 10px);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  animation: sheet-up 0.3s ease both;
+}
+
+.oia-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.oia-text b {
+  font-size: 14px;
+}
+
+.oia-text span {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.oia-btn {
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.oia-x {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .net-ring,
+  .net-still,
+  .net-spin {
+    animation: none;
+  }
+   }
