@@ -3,6 +3,7 @@
    - picture-in-picture: a tiny plugin ("Pip") and a MainActivity that opens the
      small video window when the person leaves the app while a film plays
    - the app opens in portrait on phones (the player turns to landscape by itself)
+   - shared links (nexushd://movie/123) open the app on that title
    Run from the repository folder: node scripts/android-native.mjs */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -155,5 +156,19 @@ xml = xml.replace(/<activity\b[^>]*>/, (tag) => {
   }
   return next;
 });
+
+// shared links: nexushd://movie/123 opens that title in the app
+if (!xml.includes('android:scheme="nexushd"')) {
+  const filter = `
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="nexushd" />
+        </intent-filter>
+    `;
+  xml = xml.replace(/<\/activity>/, `${filter}</activity>`);
+  console.log('Added the nexushd:// link filter');
+}
 fs.writeFileSync(manifestFile, xml);
 console.log(/<activity\b[^>]*>/.exec(xml)?.[0]);
