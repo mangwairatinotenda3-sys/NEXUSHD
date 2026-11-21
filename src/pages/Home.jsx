@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Play, Flame, WifiOff, Film, ChevronRight, Bell } from 'lucide-react';
+import { Search, Play, Flame, WifiOff, Film, ChevronRight, Bell, Download, Star } from 'lucide-react';
 import BrandMark from '../components/BrandMark.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import MovieRow from '../components/MovieRow.jsx';
 import ContinueRow from '../components/ContinueRow.jsx';
 import useHistory, { recordView } from '../hooks/useHistory.js';
 import useReminders from '../services/reminders.js';
+import useOnline from '../hooks/useOnline.js';
+import { whenOnline } from '../services/connection.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
 import '../styles/home.css';
 import '../styles/free.css';
@@ -61,7 +63,15 @@ function Hero({ movies, genreMap, onOpen }) {
                 <Flame size={13} /> Trending
               </span>
               <h2 className="hero-title">{m.title}</h2>
-              {genres && <div className="hero-meta">{genres}</div>}
+              <div className="hero-meta">
+                {m.vote_average > 0 && (
+                  <span className="hero-rate">
+                    <Star size={13} fill="currentColor" /> {m.vote_average.toFixed(1)}
+                  </span>
+                )}
+                {m.release_date && <span>{m.release_date.slice(0, 4)}</span>}
+                {genres && <span>{genres}</span>}
+              </div>
               <button
                 className="btn-primary hero-btn"
                 tabIndex={i === index ? 0 : -1}
@@ -94,7 +104,9 @@ export default function Home() {
   const navigate = useNavigate();
   const history = useHistory();
   const reminders = useReminders();
+  const online = useOnline();
   const [genreId, setGenreId] = useState(null);
+  const [tab, setTab] = useState('all'); // all | movie | tv
 
   const trending = useMovies(() => tmdb.trending());
   const popular = useMovies(() => tmdb.popular());
@@ -113,10 +125,14 @@ export default function Home() {
     () => Object.fromEntries(genreList.map((g) => [g.id, g.name])),
     [genreList]
   );
-  const heroMovies = (trending.data?.results || []).filter((m) => m.backdrop_path).slice(0, 5);
+  const heroSource = tab === 'tv' ? tvPopular : trending;
+  const heroMovies = (heroSource.data?.results || []).filter((m) => m.backdrop_path).slice(0, 5);
+  const showMovies = tab !== 'tv';
+  const showSeries = tab !== 'movie';
   const failed = trending.error && popular.error && topRated.error;
 
-  const open = (item) => navigate(`/${item.media_type === 'tv' ? 'tv' : 'movie'}/${item.id}`);
+  const open = (item) =>
+    whenOnline(() => navigate(`/${item.media_type === 'tv' ? 'tv' : 'movie'}/${item.id}`));
   const openHero = (item) => {
     recordView(item);
     open(item);
@@ -149,48 +165,96 @@ export default function Home() {
             <Bell size={24} />
             {reminders.waiting.length > 0 && <span className="home-dot" />}
           </button>
-          <button className="icon-btn" onClick={() => navigate('/search')} aria-label="Search">
-            <Search size={24} />
+          <button className="icon-btn" onClick={() => navigate('/downloads')} aria-label="Downloads">
+            <Download size={24} />
           </button>
         </div>
       </header>
 
+      <button className="home-search" onClick={() => navigate('/search')} aria-label="Search">
+        <Search size={19} />
+        <span>Search movies, series and more</span>
+      </button>
+
+      <div className="home-tabs" role="tablist" aria-label="Browse">
+        {[
+          { id: 'all', label: 'For you' },
+          { id: 'movie', label: 'Movies' },
+          { id: 'tv', label: 'Series' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            className={tab === t.id ? 'on' : ''}
+            onClick={() => {
+              setTab(t.id);
+              if (t.id === 'tv') setGenreId(null);
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+        <button role="tab" aria-selected="false" onClick={() => navigate('/free')}>
+          Free films
+        </button>
+        <button role="tab" aria-selected="false" onClick={() => navigate('/soon')}>
+          Coming soon
+        </button>
+      </div>
+
       {failed ? (
         <EmptyState
           icon={WifiOff}
-          title="Can't load movies"
-          text="Check your connection and try again."
-          actionLabel="Try again"
-          onAction={retry}
+          title={online ? "Can't load movies" : 'No internet connection'}
+          text={
+            online
+              ? 'Check your connection and try again.'
+              : 'Connect to Wi-Fi or mobile data to see movies. Your downloads still play.'
+          }
+          actionLabel={online ? 'Try again' : 'Open Downloads'}
+          onAction={online ? retry : () => navigate('/downloads')}
         />
       ) : (
         <>
-          {trending.loading ? (
+          {!online && (
+            <button className="offline-note" onClick={() => navigate('/downloads')}>
+              <WifiOff size={16} />
+              <span>
+                <b>You're offline</b> · showing what you saw last. Tap a title to see more.
+              </span>
+              <ChevronRight size={16} />
+            </button>
+          )}
+
+          {heroSource.loading ? (
             <div className="skeleton hero-sk" />
           ) : heroMovies.length > 0 ? (
-            <Hero movies={heroMovies} genreMap={genreMap} onOpen={openHero} />
+            <Hero key={tab} movies={heroMovies} genreMap={genreMap} onOpen={openHero} />
           ) : null}
 
-          <div className="chips" role="list">
-            {genres.loading
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="skeleton chip-sk" />
-                ))
-              : genreList.map((g) => (
-                  <button
-                    key={g.id}
-                    role="listitem"
-                    className={`chip ${genreId === g.id ? 'on' : ''}`}
-                    onClick={() => setGenreId(genreId === g.id ? null : g.id)}
-                  >
-                    {g.name}
-                  </button>
-                ))}
-          </div>
+          {showMovies && (
+            <div className="chips" role="list">
+              {genres.loading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="skeleton chip-sk" />
+                  ))
+                : genreList.map((g) => (
+                    <button
+                      key={g.id}
+                      role="listitem"
+                      className={`chip ${genreId === g.id ? 'on' : ''}`}
+                      onClick={() => setGenreId(genreId === g.id ? null : g.id)}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+            </div>
+          )}
 
           <ContinueRow
             onOpenFilm={(film) => navigate(`/free?play=${encodeURIComponent(film.id)}`)}
-            onOpenSeries={(id) => navigate(`/tv/${id}`)}
+            onOpenSeries={(id) => whenOnline(() => navigate(`/tv/${id}`))}
           />
 
           <button className="free-promo" onClick={() => navigate('/free')}>
@@ -215,7 +279,7 @@ export default function Home() {
             />
           )}
 
-          {genreId && (
+          {showMovies && genreId && (
             <MovieRow
               title={`${genreMap[genreId] || ''} Movies`}
               movies={byGenre.data?.results}
@@ -224,45 +288,65 @@ export default function Home() {
             />
           )}
 
-          <MovieRow
-            title="Trending Movies"
-            movies={trending.data?.results}
-            loading={trending.loading}
-            onOpen={open}
-          />
-          <MovieRow
-            title="Popular"
-            movies={popular.data?.results}
-            loading={popular.loading}
-            onOpen={open}
-          />
-          <MovieRow
-            title="Popular Series"
-            movies={tvPopular.data?.results}
-            loading={tvPopular.loading}
-            onOpen={open}
-          />
-          <MovieRow
-            title="Top Rated"
-            movies={topRated.data?.results}
-            loading={topRated.loading}
-            onOpen={open}
-          />
-          <MovieRow
-            title="Top Rated Series"
-            movies={tvTopRated.data?.results}
-            loading={tvTopRated.loading}
-            onOpen={open}
-          />
-          <MovieRow
-            title="Coming Soon"
-            movies={upcoming.data?.results}
-            loading={upcoming.loading}
-            onOpen={open}
-            onSeeAll={() => navigate('/soon')}
-          />
+          {showMovies && (
+            <MovieRow
+              title="Trending Movies"
+              movies={trending.data?.results}
+              loading={trending.loading}
+              onOpen={open}
+            />
+          )}
+          {tab === 'all' && (
+            <MovieRow
+              title="Popular Series"
+              movies={tvPopular.data?.results}
+              loading={tvPopular.loading}
+              onOpen={open}
+            />
+          )}
+          {showMovies && (
+            <MovieRow
+              title="Popular"
+              movies={popular.data?.results}
+              loading={popular.loading}
+              onOpen={open}
+            />
+          )}
+          {tab === 'tv' && (
+            <MovieRow
+              title="Popular Series"
+              movies={tvPopular.data?.results}
+              loading={tvPopular.loading}
+              onOpen={open}
+            />
+          )}
+          {showMovies && (
+            <MovieRow
+              title="Top Rated"
+              movies={topRated.data?.results}
+              loading={topRated.loading}
+              onOpen={open}
+            />
+          )}
+          {showSeries && (
+            <MovieRow
+              title="Top Rated Series"
+              movies={tvTopRated.data?.results}
+              loading={tvTopRated.loading}
+              onOpen={open}
+            />
+          )}
+          {showMovies && (
+            <MovieRow
+              title="Coming Soon"
+              movies={upcoming.data?.results}
+              loading={upcoming.loading}
+              onOpen={open}
+              onSeeAll={() => navigate('/soon')}
+            />
+          )}
         </>
       )}
     </div>
   );
-    }
+  }
