@@ -80,6 +80,15 @@ const listeners = new Set();
 let state = { items: [], loading: true };
 let lastMirror = '';
 
+/* Stops a running download at once and frees its place, so Resume works right
+   away. The stopped run may take a moment to notice; it throws its unfinished
+   blocks away and never touches the run that replaces it. */
+function release(id) {
+  controllers.get(id)?.abort();
+  controllers.delete(id);
+  meters.delete(id);
+}
+
 function noteBytes(id, count) {
   const now = Date.now();
   let meter = meters.get(id);
@@ -252,7 +261,7 @@ const isFatal = (err) =>
   /^(The server|Not enough storage)/.test(String(err?.message || '')) ||
   err?.name === 'QuotaExceededError';
 
-/* Android app. Returns true when the whole file is saved, false when it was
+  /* Android app. Returns true when the whole file is saved, false when it was
    paused or removed on the way. */
 async function downloadNative(id, controller) {
   let rec = records.get(id);
@@ -362,7 +371,7 @@ async function downloadNative(id, controller) {
     while (!failure && !controller.signal.aborted) {
       const index = queue.shift();
       if (index === undefined) return;
-             for (let attempt = 1; ; attempt += 1) {
+      for (let attempt = 1; ; attempt += 1) {
         try {
           await getBlock(index);
           break;
@@ -413,7 +422,8 @@ async function run(id, force = false) {
       tries: 0,
     };
     await saveChunk(next, rec.chunks, blob);
-    if (!records.has(id)) return;
+    // paused while saving: drop this piece, the next run fetches it again
+    if (!records.has(id) || controller.signal.aborted) return;
     records.set(id, next);
     buffer = [];
     bufferBytes = 0;
@@ -500,8 +510,11 @@ async function run(id, force = false) {
       }
     }
   } finally {
-    controllers.delete(id);
-    meters.delete(id);
+    // only clean up after this run: a newer run may already have taken over
+    if (controllers.get(id) === controller) {
+      controllers.delete(id);
+      meters.delete(id);
+    }
     emit();
   }
 }
@@ -599,8 +612,7 @@ export function pauseDownload(id, auto = false) {
   const rec = records.get(id);
   if (!rec) return;
   if (!auto) forced.delete(id);
-  controllers.get(id)?.abort();
-  meters.delete(id);
+  release(id);
   patch(
     id,
     { status: 'paused', bytes: rec.stored, resumeOnOpen: auto, waitingWifi: false, tries: 0 },
@@ -612,8 +624,7 @@ export function pauseDownload(id, auto = false) {
 function pauseForWifi(id) {
   const rec = records.get(id);
   if (!rec) return;
-  controllers.get(id)?.abort();
-  meters.delete(id);
+  release(id);
   patch(
     id,
     { status: 'paused', bytes: rec.stored, resumeOnOpen: true, waitingWifi: true, tries: 0 },
@@ -635,9 +646,8 @@ export function resumeDownload(id, force = false) {
 }
 
 export async function removeDownload(id) {
-  controllers.get(id)?.abort();
+  release(id);
   forced.delete(id);
-  meters.delete(id);
   records.delete(id);
   emit();
   try {
@@ -724,4 +734,4 @@ if (typeof document !== 'undefined') {
 export default function useDownloads() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   return { items: snapshot.items, loading: snapshot.loading, supported: downloadsSupported() };
-     }
+                     }         
