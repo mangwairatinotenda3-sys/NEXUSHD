@@ -4,9 +4,9 @@ import { getNetwork, subscribeNetwork } from './network.js';
 
 /* Is the phone online right now, and the "No internet connection" prompt.
 
-   Like MovieBox: titles you saved still show on screen without internet, and
-   tapping one that needs the internet opens a small prompt that asks you to
-   connect to Wi-Fi or mobile data. The moment the connection comes back, the
+   Titles you saw before still show on screen without internet, and tapping
+   one that needs the internet opens a small prompt that asks you to connect
+   to Wi-Fi or mobile data. The moment the connection comes back, the
    prompt closes and the thing you tapped opens by itself.
 
    Use whenOnline(() => ...) around anything that needs the internet. */
@@ -104,4 +104,4 @@ const getSnapshot = () => snapshot;
 
 export default function useConnection() {
   return useSyncExternalStore(subscribe, getSnapshot);
-}
+                          }
