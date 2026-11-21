@@ -1,0 +1,58 @@
+/* Buttons pinned at the bottom of a title page */
+.d-bar {
+  position: sticky;
+  bottom: calc(var(--nav-height, 64px) + var(--safe-bottom, 0px));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 26px 16px 12px;
+  background: linear-gradient(180deg, transparent, var(--bg) 42%);
+  pointer-events: none;
+}
+
+.d-bar > * {
+  pointer-events: auto;
+}
+
+.d-bar-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.d-bar-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  transition: transform 0.12s, background 0.2s, color 0.2s;
+}
+
+.d-bar-btn:active {
+  transform: scale(0.92);
+}
+
+.d-bar-btn.on {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-bright);
+}
+
+.d-share {
+  position: absolute;
+  top: calc(var(--safe-top, 0px) + 10px);
+  right: 14px;
+  z-index: 3;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
