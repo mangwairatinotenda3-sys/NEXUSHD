@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronRight, Film, Star } from 'lucide-react';
 import { imageUrl } from '../services/tmdb.js';
 import { recordView } from '../hooks/useHistory.js';
+import { whenOnline } from '../services/connection.js';
 
 export function MovieCard({ movie, onOpen }) {
   const [loaded, setLoaded] = useState(false);
@@ -11,10 +12,13 @@ export function MovieCard({ movie, onOpen }) {
   return (
     <button
       className="movie-card"
-      onClick={() => {
-        recordView(movie);
-        onOpen?.(movie);
-      }}
+      onClick={() =>
+        // without internet this opens the "No internet connection" prompt instead
+        whenOnline(() => {
+          recordView(movie);
+          onOpen?.(movie);
+        })
+      }
     >
       <div className="poster">
         {src ? (
@@ -97,4 +101,4 @@ export default function MovieRow({
       </div>
     </section>
   );
-              }
+}
