@@ -15,6 +15,7 @@ import {
   OFFSETS,
 } from '../services/reminders.js';
 import { tmdb, imageUrl } from '../services/tmdb.js';
+import { whenOnline } from '../services/connection.js';
 import '../styles/library.css';
 import '../styles/mylists.css';
 import '../styles/soon.css';
@@ -192,7 +193,8 @@ export default function ComingSoon() {
 
   const groups = useMemo(() => groupItems(current.items), [current.items]);
 
-  const open = (m) => navigate(`/${m.media_type === 'tv' ? 'tv' : 'movie'}/${m.id}`);
+  const open = (m) =>
+    whenOnline(() => navigate(`/${m.media_type === 'tv' ? 'tv' : 'movie'}/${m.id}`));
 
   const myReminders = useMemo(
     () => [...reminders.items].sort((a, b) => a.fireAt - b.fireAt),
@@ -352,4 +354,4 @@ export default function ComingSoon() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-}
+                        }
