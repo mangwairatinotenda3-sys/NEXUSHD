@@ -1,20 +1,7 @@
-import { useEffect, useState } from 'react';
+import useConnection from '../services/connection.js';
 
+/* true while the phone has a connection. It follows the browser and the
+   phone's own network status, so it is right inside the Android app too. */
 export default function useOnline() {
-  const [online, setOnline] = useState(() =>
-    typeof navigator === 'undefined' ? true : navigator.onLine
-  );
-
-  useEffect(() => {
-    const goOnline = () => setOnline(true);
-    const goOffline = () => setOnline(false);
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
-    return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
-    };
-  }, []);
-
-  return online;
-}
+  return useConnection().online;
+    }
