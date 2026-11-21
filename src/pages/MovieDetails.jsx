@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronLeft,
-  ChevronRight,
   Play,
   Bookmark,
   BookmarkCheck,
@@ -40,9 +39,13 @@ import useReminders, {
 } from '../services/reminders.js';
 import { FREE_FILMS, archivePage, loadFilm, searchFreeFilms } from '../services/archive.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
+import { shareTitle } from '../services/links.js';
+import { whenOnline } from '../services/connection.js';
+import useOnline from '../hooks/useOnline.js';
 import '../styles/details.css';
 import '../styles/free.css';
 import '../styles/series.css';
+import '../styles/detailsbar.css';
 
 function pickTrailer(videos = []) {
   const yt = videos.filter((v) => v.site === 'YouTube');
@@ -114,6 +117,7 @@ export default function MovieDetails({ kind = 'movie' }) {
   const { has, toggle } = useWatchlist();
   const watched = useWatched();
   const reminders = useReminders();
+  const online = useOnline();
   const [listOpen, setListOpen] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
   const { items: downloads } = useDownloads();
@@ -173,7 +177,7 @@ export default function MovieDetails({ kind = 'movie' }) {
         setFreePlayer({ film, src: null, loading: false, offline: true });
       }
     } else {
-      setFreePlayer({ film, src: film.src, loading: false, offline: false });
+      whenOnline(() => setFreePlayer({ film, src: film.src, loading: false, offline: false }));
     }
   };
 
@@ -221,8 +225,12 @@ export default function MovieDetails({ kind = 'movie' }) {
         <Header title="" back />
         <EmptyState
           icon={WifiOff}
-          title={`Couldn't load this ${isTv ? 'series' : 'movie'}`}
-          text="Check your connection and try again."
+          title={online ? `Couldn't load this ${isTv ? 'series' : 'movie'}` : 'No internet connection'}
+          text={
+            online
+              ? 'Check your connection and try again.'
+              : 'Connect to Wi-Fi or mobile data to open this.'
+          }
           actionLabel="Try again"
           onAction={details.reload}
         />
@@ -258,21 +266,15 @@ export default function MovieDetails({ kind = 'movie' }) {
     showToast(now ? 'Marked as watched' : 'Removed from Watched');
   };
 
+  const openTrailer = () => whenOnline(() => setTrailerOpen(true));
+
   const onShare = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: m.title, text: `${m.title} on NexusHD`, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        showToast('Link copied');
-      }
-    } catch {
-      /* share cancelled */
-    }
+    const result = await shareTitle(m, kind);
+    if (result === 'copied') showToast('Link copied');
+    else if (result === 'failed') showToast("Couldn't share this title");
   };
 
-    return (
+  return (
     <div className="page">
       <div className="d-hero">
         {heroImg && <img src={heroImg} alt="" />}
@@ -280,8 +282,11 @@ export default function MovieDetails({ kind = 'movie' }) {
         <button className="icon-btn d-back" onClick={back} aria-label="Back">
           <ChevronLeft size={26} />
         </button>
+        <button className="icon-btn d-share" onClick={onShare} aria-label="Share">
+          <Share2 size={22} />
+        </button>
         {trailer && (
-          <button className="d-play" onClick={() => setTrailerOpen(true)} aria-label="Play trailer">
+          <button className="d-play" onClick={openTrailer} aria-label="Play trailer">
             <Play size={28} fill="currentColor" />
           </button>
         )}
@@ -348,65 +353,6 @@ export default function MovieDetails({ kind = 'movie' }) {
           </div>
         )}
 
-        {freeFilm && (
-          <button
-            className="free-promo"
-            style={{ width: '100%', margin: '18px 0 0' }}
-            onClick={playFree}
-          >
-            <span className="free-promo-icon">
-              <Play size={22} fill="currentColor" />
-            </span>
-            <span className="free-promo-text">
-              <strong>Watch the full film free</strong>
-              <span>Public domain · hosted by the Internet Archive</span>
-            </span>
-            <ChevronRight size={20} style={{ color: 'var(--text-muted)' }} />
-          </button>
-        )}
-
-        <div className="d-actions">
-          <button className="btn-primary" disabled={!trailer} onClick={() => setTrailerOpen(true)}>
-            <Play size={18} fill="currentColor" />
-            {trailer ? 'Watch Trailer' : 'No trailer available'}
-          </button>
-          <button
-            className={`btn-secondary btn-icon ${saved ? 'on' : ''}`}
-            onClick={onToggleSave}
-            aria-label={saved ? 'Remove from My List' : 'Add to My List'}
-            aria-pressed={saved}
-          >
-            {saved ? <BookmarkCheck size={22} /> : <Bookmark size={22} />}
-          </button>
-          <button className="btn-secondary btn-icon" onClick={onShare} aria-label="Share">
-            <Share2 size={22} />
-          </button>
-        </div>
-
-        <div className="ml-actions">
-          <button className="ml-pill" onClick={() => setListOpen(true)}>
-            <ListPlus size={18} /> Save to…
-          </button>
-          {unreleased ? (
-            <button
-              className={`ml-pill ${reminder ? 'on' : ''}`}
-              onClick={() => setRemindOpen(true)}
-              aria-pressed={Boolean(reminder)}
-            >
-              {reminder ? <BellRing size={18} /> : <Bell size={18} />}
-              {reminder ? 'Reminder on' : 'Remind me'}
-            </button>
-          ) : (
-            <button
-              className={`ml-pill ${seen ? 'on' : ''}`}
-              onClick={onToggleWatched}
-              aria-pressed={seen}
-            >
-              <Eye size={18} /> {seen ? 'Watched' : 'Mark watched'}
-            </button>
-          )}
-        </div>
-
         <WhereToWatch key={`${kind}-${m.id}`} kind={kind} id={m.id} />
 
         {!unreleased && <YourTake key={`${kind}-${m.id}`} movie={m} onToast={showToast} />}
@@ -461,6 +407,54 @@ export default function MovieDetails({ kind = 'movie' }) {
         onOpen={(item) => navigate(`/${kind}/${item.id}`)}
       />
 
+      <div className="d-bar">
+        {freeFilm ? (
+          <button className="btn-primary d-bar-main" onClick={playFree}>
+            <Play size={20} fill="currentColor" /> Watch free film
+          </button>
+        ) : (
+          <button className="btn-primary d-bar-main" disabled={!trailer} onClick={openTrailer}>
+            <Play size={20} fill="currentColor" />
+            {trailer ? 'Watch Trailer' : 'No trailer'}
+          </button>
+        )}
+        {freeFilm && trailer && (
+          <button className="d-bar-btn" onClick={openTrailer} aria-label="Watch trailer">
+            <Tv size={22} />
+          </button>
+        )}
+        <button
+          className={`d-bar-btn ${saved ? 'on' : ''}`}
+          onClick={onToggleSave}
+          aria-label={saved ? 'Remove from My List' : 'Add to My List'}
+          aria-pressed={saved}
+        >
+          {saved ? <BookmarkCheck size={22} /> : <Bookmark size={22} />}
+        </button>
+        <button className="d-bar-btn" onClick={() => setListOpen(true)} aria-label="Save to a list">
+          <ListPlus size={22} />
+        </button>
+        {unreleased ? (
+          <button
+            className={`d-bar-btn ${reminder ? 'on' : ''}`}
+            onClick={() => setRemindOpen(true)}
+            aria-label={reminder ? 'Reminder on' : 'Remind me'}
+            aria-pressed={Boolean(reminder)}
+          >
+            {reminder ? <BellRing size={22} /> : <Bell size={22} />}
+          </button>
+        ) : (
+          <button
+            className={`d-bar-btn ${seen ? 'on' : ''}`}
+            onClick={onToggleWatched}
+            aria-label={seen ? 'Watched' : 'Mark watched'}
+            aria-pressed={seen}
+          >
+            <Eye size={22} />
+          </button>
+        )}
+      </div>
+
       {trailerOpen && trailer && (
         <TrailerPlayer
           videoId={trailer.key}
@@ -490,4 +484,4 @@ export default function MovieDetails({ kind = 'movie' }) {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-      }
+                  }
