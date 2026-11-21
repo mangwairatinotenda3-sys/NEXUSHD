@@ -4,6 +4,8 @@ import { Wifi, WifiOff } from 'lucide-react';
 import BottomNav from './BottomNav.jsx';
 import UpdatePrompt from './UpdatePrompt.jsx';
 import FirstRun from './FirstRun.jsx';
+import NoInternetSheet from './NoInternetSheet.jsx';
+import OpenInApp from './OpenInApp.jsx';
 import useOnline from '../hooks/useOnline.js';
 import useDownloads, { pauseDownload, resumeDownload } from '../services/downloadManager.js';
 import '../styles/offline.css';
@@ -83,11 +85,11 @@ export default function AppLayout() {
           ) : (
             <>
               <WifiOff size={16} />
-              <strong>You're offline</strong>
+              <strong>No internet connection</strong>
               <span>
                 {waiting > 0
                   ? "Downloads will resume when you're back online"
-                  : 'Downloaded films still play'}
+                  : 'Your downloaded films still play'}
               </span>
               {pathname !== '/downloads' && (
                 <button onClick={() => navigate('/downloads')}>Downloads</button>
@@ -103,6 +105,8 @@ export default function AppLayout() {
       {showNav && <BottomNav />}
       <UpdatePrompt />
       <FirstRun />
+      <OpenInApp />
+      <NoInternetSheet />
     </div>
   );
-        }
+  }
