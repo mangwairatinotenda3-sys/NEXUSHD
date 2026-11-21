@@ -4,6 +4,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { BACK_EVENT } from './services/welcome.js';
 import { lockAppOrientation } from './services/orientation.js';
+import { routeFromLink } from './services/links.js';
 
 /* Native touches for the Android app. On the web this does nothing. */
 
@@ -57,6 +58,16 @@ if (Capacitor.isNativePlatform()) {
     else window.history.back();
   });
 
+  // A shared link (nexushd://movie/123) opens that title
+  const openLink = (url) => {
+    const route = routeFromLink(url);
+    if (route) window.location.hash = `#${route}`;
+  };
+  App.getLaunchUrl()
+    .then((launch) => launch?.url && openLink(launch.url))
+    .catch(() => {});
+  App.addListener('appUrlOpen', (event) => openLink(event.url));
+
   // A light tap on tabs, chips and icon buttons
   document.addEventListener(
     'click',
@@ -67,4 +78,4 @@ if (Capacitor.isNativePlatform()) {
     },
     true
   );
-                       }
+  }
