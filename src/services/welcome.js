@@ -41,6 +41,42 @@ export const markVersionSeen = () => write(VERSION_KEY, APP_VERSION);
    each release that should show the "What's new" sheet once. */
 export const RELEASES = [
   {
+    version: '1.4.0',
+    title: 'Offline browsing, player settings, your stats',
+    highlights: [
+      {
+        icon: 'download',
+        title: 'Browse without internet',
+        text: 'Titles you saw before still show up offline. Tap one and we ask you to connect, then open it for you.',
+      },
+      {
+        icon: 'play',
+        title: 'Player settings',
+        text: 'Choose your normal speed, skip length, and the size and colour of subtitles. You can also stop it remembering your place.',
+      },
+      {
+        icon: 'star',
+        title: 'Your stats',
+        text: 'See how many films and hours you watched, your best streak and your year, on your Profile.',
+      },
+      {
+        icon: 'users',
+        title: 'Share a title',
+        text: 'Send a link to any movie or series. It opens in the app, or on the web if the app is not installed.',
+      },
+      {
+        icon: 'list',
+        title: 'Buttons that stay put',
+        text: 'Play, Save and Watched now stay at the bottom of a title page, so you never scroll to find them.',
+      },
+      {
+        icon: 'gauge',
+        title: 'New Downloads page',
+        text: 'Downloading and Completed tabs, Pause All, Clear All and film suggestions.',
+      },
+    ],
+  },
+  {
     version: '1.3.0',
     title: 'Your lists, reminders, better search',
     highlights: [
