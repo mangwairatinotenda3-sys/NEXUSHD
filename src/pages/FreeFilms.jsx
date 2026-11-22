@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -48,6 +49,15 @@ const SORTS = [
 ];
 
 const percent = (rec) => (rec.size ? Math.min(100, Math.round((rec.bytes / rec.size) * 100)) : 0);
+
+/* FIX: Same portal as MovieDetails.jsx - sheet/player/toast must live on
+   .app-shell, not inside .page / .app-content. Otherwise position:fixed
+   inside a transformed / overflow:hidden ancestor covers the screen in
+   white with the .fp content clipped off-screen = blank white on click. */
+const layer = (node) => {
+  const shell = typeof document !== 'undefined' ? document.querySelector('.app-shell') : null;
+  return shell ? createPortal(node, shell) : node;
+};
 
 function Thumb({ id, alt }) {
   const [loaded, setLoaded] = useState(false);
@@ -119,6 +129,12 @@ export default function FreeFilms() {
   const selectedRef = useRef(null);
   const keyRef = useRef('');
   const toastTimer = useRef(null);
+  /* FIX: refs for loadMore guard + pagination. State guards update async,
+     so the observer could fire twice for the same page. */
+  const pageRef = useRef(1);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(false);
+  const dlMapRef = useRef(new Map());
 
   selectedRef.current = selected;
   keyRef.current = `${term}|${sort}`;
@@ -159,7 +175,9 @@ export default function FreeFilms() {
         if (cancelled) return;
         setResults(data.films);
         setPage(1);
+        pageRef.current = 1;
         setHasMore(data.hasMore);
+        hasMoreRef.current = data.hasMore;
         setLoading(false);
       })
       .catch(() => {
@@ -167,6 +185,7 @@ export default function FreeFilms() {
         setError(true);
         setResults([]);
         setHasMore(false);
+        hasMoreRef.current = false;
         setLoading(false);
       });
     return () => {
@@ -174,23 +193,35 @@ export default function FreeFilms() {
     };
   }, [term, sort, retry]);
 
+  /* FIX: loadMore now uses refs, not stale state. Prevents duplicate
+     fetch for same page + skipped pages when observer fires twice. */
   const loadMore = useCallback(() => {
-    if (loadingMore || loading || !hasMore) return;
+    if (loadingMoreRef.current || loading || !hasMoreRef.current) return;
     const forKey = `${term}|${sort}`;
+    const nextPage = pageRef.current + 1;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
-    searchFreeFilms({ term, sort, page: page + 1 })
+    searchFreeFilms({ term, sort, page: nextPage })
       .then((data) => {
         if (keyRef.current !== forKey) return;
         setResults((prev) => {
           const seen = new Set(prev.map((f) => f.id));
           return [...prev, ...data.films.filter((f) => !seen.has(f.id))];
         });
-        setPage((p) => p + 1);
+        pageRef.current = nextPage;
+        setPage(nextPage);
+        hasMoreRef.current = data.hasMore;
         setHasMore(data.hasMore);
       })
-      .catch(() => setHasMore(false))
-      .finally(() => setLoadingMore(false));
-  }, [loadingMore, loading, hasMore, term, sort, page]);
+      .catch(() => {
+        hasMoreRef.current = false;
+        setHasMore(false);
+      })
+      .finally(() => {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      });
+  }, [loading, term, sort]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -204,6 +235,7 @@ export default function FreeFilms() {
   }, [loadMore, results.length]);
 
   const dlMap = useMemo(() => new Map(downloads.map((d) => [d.id, d])), [downloads]);
+  dlMapRef.current = dlMap;
 
   const featuredShown = useMemo(
     () =>
@@ -235,9 +267,11 @@ export default function FreeFilms() {
       .catch(() => selectedRef.current?.id === entry.id && setDetailsError(true));
   };
 
+  /* FIX: play() now reads dlMapRef (latest downloads), not a stale
+     dlMap closure from when playParam effect first ran. */
   const play = async (film) => {
     setSelected(null);
-    const rec = dlMap.get(film.id);
+    const rec = dlMapRef.current.get(film.id);
     if (rec && rec.status === 'completed') {
       setPlayer({ film, src: null, loading: true, offline: true, subtitles: rec.subs || [] });
       try {
@@ -274,9 +308,11 @@ export default function FreeFilms() {
       year: saved?.year || null,
       rights: 'Tagged as public domain or CC0 by the uploader on the Internet Archive',
     };
-    const local = dlMap.get(playParam);
+    /* FIX: check dlMapRef here too, and let play() re-check it after
+       loadFilm resolves, so a downloaded film isn't missed if downloads
+       were still loading when this effect first ran. */
+    const local = dlMapRef.current.get(playParam);
     if (local && local.status === 'completed') {
-      // already downloaded: play it from the phone, no connection needed
       playRef.current({ ...entry, title: local.title, src: local.src, subs: local.subs || [] });
       return;
     }
@@ -306,8 +342,7 @@ export default function FreeFilms() {
   const longText = (details?.description || '').length > 200;
   const noResults =
     !featuredLoading && !loading && !error && featuredShown.length === 0 && moreShown.length === 0;
-
-  return (
+    return (
     <div className="page">
       <Header title="Free Films" back />
 
@@ -331,8 +366,7 @@ export default function FreeFilms() {
           autoCorrect="off"
           spellCheck={false}
         />
-
-                {query && (
+        {query && (
           <button type="button" onClick={() => setQuery('')} aria-label="Clear search">
             <X size={15} />
           </button>
@@ -421,228 +455,232 @@ export default function FreeFilms() {
         />
       )}
 
-      {selected && (
-        <div className="sheet-backdrop film-page" onClick={() => setSelected(null)}>
-          <div className="fp" onClick={(e) => e.stopPropagation()}>
-            <div className="fp-scroll">
-              <div className="fp-hero">
-                <div className="fp-hero-bg">
-                  <Thumb id={selected.id} alt="" />
-                </div>
-                <div className="fp-hero-fade" />
-                <button className="fp-round fp-back" onClick={() => setSelected(null)} aria-label="Back">
-                  <ChevronLeft size={24} />
-                </button>
-                <button className="fp-round fp-share" onClick={() => share(selected)} aria-label="Share">
-                  <Share2 size={20} />
-                </button>
-                <div className="fp-poster">
-                  <Thumb id={selected.id} alt={selected.title} />
-                </div>
-              </div>
-
-              <div className="fp-body">
-                <h1 className="fp-title">{selected.title}</h1>
-                <div className="fp-meta">
-                  {[selected.year, details?.seconds ? formatDuration(details.seconds) : '']
-                    .filter(Boolean)
-                    .join(' · ')}
-                </div>
-
-                <div className="fp-chips">
-                  <span className="fp-chip">{rec?.status === 'completed' ? 'DOWNLOADED' : 'FREE'}</span>
-                  <span className="fp-chip">PUBLIC DOMAIN</span>
-                  {details?.subs?.length > 0 && <span className="fp-chip">CC</span>}
-                  {details?.sizeBytes > 0 && <span className="fp-chip">{formatBytes(details.sizeBytes)}</span>}
-                </div>
-
-                {!details && !detailsError && (
-                  <div style={{ marginTop: 18 }}>
-                    <div className="skeleton" style={{ height: 14 }} />
-                    <div className="skeleton" style={{ height: 14, marginTop: 8 }} />
-                    <div className="skeleton" style={{ height: 14, width: '60%', marginTop: 8 }} />
+      {/* FIX: sheet now portaled to .app-shell via layer() - fixes blank white on click */}
+      {selected &&
+        layer(
+          <div className="sheet-backdrop film-page" onClick={() => setSelected(null)}>
+            <div className="fp" onClick={(e) => e.stopPropagation()}>
+              <div className="fp-scroll">
+                <div className="fp-hero">
+                  <div className="fp-hero-bg">
+                    <Thumb id={selected.id} alt="" />
                   </div>
-                )}
-
-                {detailsError && (
-                  <p className="fp-rights">
-                    Couldn't load this film's details.{' '}
-                    <a href={archivePage(selected.id)} target="_blank" rel="noopener noreferrer">
-                      Open it on Archive.org
-                    </a>
-                    .
-                  </p>
-                )}
-
-                {details?.description && (
-                  <>
-                    <p className={`fp-desc ${longText && !expanded ? 'clamp' : ''}`}>
-                      {details.description}
-                    </p>
-                    {longText && (
-                      <button className="d-more" onClick={() => setExpanded(!expanded)}>
-                        {expanded ? 'Show less' : 'Read more'}
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {details && resumeAt > 10 && (
-                  <button
-                    className="btn-secondary fp-wide"
-                    onClick={() => {
-                      saveProgress(selected.id, 0);
-                      recordFilmProgress(details, 0);
-                      play(details);
-                    }}
-                  >
-                    Start from the beginning
+                  <div className="fp-hero-fade" />
+                  <button className="fp-round fp-back" onClick={() => setSelected(null)} aria-label="Back">
+                    <ChevronLeft size={24} />
                   </button>
-                )}
-
-                {rec?.status === 'completed' && (
-                  <button className="btn-secondary fp-wide" onClick={() => removeDownload(rec.id)}>
-                    <Trash2 size={16} /> Remove download · {formatBytes(rec.size)}
+                  <button className="fp-round fp-share" onClick={() => share(selected)} aria-label="Share">
+                    <Share2 size={20} />
                   </button>
-                )}
+                  <div className="fp-poster">
+                    <Thumb id={selected.id} alt={selected.title} />
+                  </div>
+                </div>
 
-                <div className="fp-info">
-                  {details?.creator && (
-                    <div className="fp-info-row">
-                      <span>Director / creator</span>
-                      <span>{details.creator}</span>
+                <div className="fp-body">
+                  <h1 className="fp-title">{selected.title}</h1>
+                  <div className="fp-meta">
+                    {[selected.year, details?.seconds ? formatDuration(details.seconds) : '']
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </div>
+
+                  <div className="fp-chips">
+                    <span className="fp-chip">{rec?.status === 'completed' ? 'DOWNLOADED' : 'FREE'}</span>
+                    <span className="fp-chip">PUBLIC DOMAIN</span>
+                    {details?.subs?.length > 0 && <span className="fp-chip">CC</span>}
+                    {details?.sizeBytes > 0 && <span className="fp-chip">{formatBytes(details.sizeBytes)}</span>}
+                  </div>
+
+                  {!details && !detailsError && (
+                    <div style={{ marginTop: 18 }}>
+                      <div className="skeleton" style={{ height: 14 }} />
+                      <div className="skeleton" style={{ height: 14, marginTop: 8 }} />
+                      <div className="skeleton" style={{ height: 14, width: '60%', marginTop: 8 }} />
                     </div>
                   )}
-                  <div className="fp-info-row">
-                    <span>Source</span>
-                    <span>
-                      <a href={archivePage(selected.id)} target="_blank" rel="noopener noreferrer">
-                        Internet Archive <ExternalLink size={12} />
-                      </a>
-                    </span>
-                  </div>
-                  <div className="fp-info-row">
-                    <span>Rights</span>
-                    <span>{selected.rights}</span>
-                  </div>
-                </div>
 
-                <p className="fp-rights">
-                  {details?.licenseUrl && (
-                    <>
-                      <a href={details.licenseUrl} target="_blank" rel="noopener noreferrer">
-                        Licence
+                  {detailsError && (
+                    <p className="fp-rights">
+                      Couldn't load this film's details.{' '}
+                      <a href={archivePage(selected.id)} target="_blank" rel="noopener noreferrer">
+                        Open it on Archive.org
                       </a>
-                      .{' '}
+                      .
+                    </p>
+                  )}
+
+                  {details?.description && (
+                    <>
+                      <p className={`fp-desc ${longText && !expanded ? 'clamp' : ''}`}>
+                        {details.description}
+                      </p>
+                      {longText && (
+                        <button className="d-more" onClick={() => setExpanded(!expanded)}>
+                          {expanded ? 'Show less' : 'Read more'}
+                        </button>
+                      )}
                     </>
                   )}
-                  Make sure this film is free to watch where you live.
-                </p>
-              </div>
-            </div>
 
-            {/* Play and Download stay at the bottom, always in view */}
-            <div className="fp-bar">
-              {!details && !detailsError && (
-                <div className="fp-bar-row">
-                  <div className="skeleton fp-play" style={{ height: 50, borderRadius: 14 }} />
-                  <div className="skeleton fp-secondary" style={{ height: 50, borderRadius: 14 }} />
-                </div>
-              )}
-
-              {details && rec && rec.status !== 'completed' && (
-                <div className="fp-dl">
-                  <div className="fp-dl-row">
-                    <span>
-                      {rec.status === 'error'
-                        ? rec.error
-                        : rec.status === 'paused'
-                        ? `Paused · ${percent(rec)}%`
-                        : `Downloading · ${percent(rec)}%`}
-                    </span>
-                    <span>
-                      {formatBytes(rec.bytes)}
-                      {rec.size ? ` of ${formatBytes(rec.size)}` : ''}
-                    </span>
-                  </div>
-                  <div className="fp-progress">
-                    <span style={{ width: `${percent(rec)}%` }} />
-                  </div>
-                </div>
-              )}
-
-              {details && (
-                <div className="fp-bar-row">
-                  <button
-                    className="btn-primary fp-play"
-                    disabled={!details.src}
-                    onClick={() => play(details)}
-                  >
-                    <Play size={18} fill="currentColor" />
-                    {rec?.status === 'completed'
-                      ? 'Play offline'
-                      : resumeAt > 10
-                      ? `Resume ${formatClock(resumeAt)}`
-                      : 'Play'}
-                  </button>
-
-                  {supported && details.src && !rec && (
+                  {details && resumeAt > 10 && (
                     <button
-                      className="btn-secondary fp-secondary"
+                      className="btn-secondary fp-wide"
                       onClick={() => {
-                        startDownload(details);
-                        showToast('Downloading. It carries on if you reopen NexusHD.');
+                        saveProgress(selected.id, 0);
+                        recordFilmProgress(details, 0);
+                        play(details);
                       }}
                     >
-                      <DownloadIcon size={18} /> Download
+                      Start from the beginning
                     </button>
                   )}
 
-                  {rec && rec.status === 'downloading' && (
-                    <button className="btn-secondary fp-secondary" onClick={() => pauseDownload(rec.id)}>
-                      <Pause size={16} /> Pause
+                  {rec?.status === 'completed' && (
+                    <button className="btn-secondary fp-wide" onClick={() => removeDownload(rec.id)}>
+                      <Trash2 size={16} /> Remove download · {formatBytes(rec.size)}
                     </button>
                   )}
 
-                  {rec && (rec.status === 'paused' || rec.status === 'error') && (
-                    <button className="btn-secondary fp-secondary" onClick={() => resumeDownload(rec.id)}>
-                      <RotateCw size={16} /> {rec.status === 'error' ? 'Try again' : 'Resume'}
-                    </button>
-                  )}
+                  <div className="fp-info">
+                    {details?.creator && (
+                      <div className="fp-info-row">
+                        <span>Director / creator</span>
+                        <span>{details.creator}</span>
+                      </div>
+                    )}
+                    <div className="fp-info-row">
+                      <span>Source</span>
+                      <span>
+                        <a href={archivePage(selected.id)} target="_blank" rel="noopener noreferrer">
+                          Internet Archive <ExternalLink size={12} />
+                        </a>
+                      </span>
+                    </div>
+                    <div className="fp-info-row">
+                      <span>Rights</span>
+                      {/* FIX: search results have no rights field - fallback instead of blank */}
+                      <span>{selected.rights || 'Tagged as public domain or CC0 by the uploader on the Internet Archive'}</span>
+                    </div>
+                  </div>
 
-                  {rec && rec.status !== 'completed' && (
-                    <button
-                      className="btn-secondary fp-cancel"
-                      onClick={() => removeDownload(rec.id)}
-                      aria-label="Cancel download"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
+                  <p className="fp-rights">
+                    {details?.licenseUrl && (
+                      <>
+                        <a href={details.licenseUrl} target="_blank" rel="noopener noreferrer">
+                          Licence
+                        </a>
+                        .{' '}
+                      </>
+                    )}
+                    Make sure this film is free to watch where you live.
+                  </p>
                 </div>
-              )}
+              </div>
+
+              <div className="fp-bar">
+                {!details && !detailsError && (
+                  <div className="fp-bar-row">
+                    <div className="skeleton fp-play" style={{ height: 50, borderRadius: 14 }} />
+                    <div className="skeleton fp-secondary" style={{ height: 50, borderRadius: 14 }} />
+                  </div>
+                )}
+
+                {details && rec && rec.status !== 'completed' && (
+                  <div className="fp-dl">
+                    <div className="fp-dl-row">
+                      <span>
+                        {rec.status === 'error'
+                          ? rec.error
+                          : rec.status === 'paused'
+                          ? `Paused · ${percent(rec)}%`
+                          : `Downloading · ${percent(rec)}%`}
+                      </span>
+                      <span>
+                        {formatBytes(rec.bytes)}
+                        {rec.size ? ` of ${formatBytes(rec.size)}` : ''}
+                      </span>
+                    </div>
+                    <div className="fp-progress">
+                      <span style={{ width: `${percent(rec)}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {details && (
+                  <div className="fp-bar-row">
+                    <button
+                      className="btn-primary fp-play"
+                      disabled={!details.src}
+                      onClick={() => play(details)}
+                    >
+                      <Play size={18} fill="currentColor" />
+                      {rec?.status === 'completed'
+                        ? 'Play offline'
+                        : resumeAt > 10
+                        ? `Resume ${formatClock(resumeAt)}`
+                        : 'Play'}
+                    </button>
+
+                    {supported && details.src && !rec && (
+                      <button
+                        className="btn-secondary fp-secondary"
+                        onClick={() => {
+                          startDownload(details);
+                          showToast('Downloading. It carries on if you reopen NexusHD.');
+                        }}
+                      >
+                        <DownloadIcon size={18} /> Download
+                      </button>
+                    )}
+
+                    {rec && rec.status === 'downloading' && (
+                      <button className="btn-secondary fp-secondary" onClick={() => pauseDownload(rec.id)}>
+                        <Pause size={16} /> Pause
+                      </button>
+                    )}
+
+                    {rec && (rec.status === 'paused' || rec.status === 'error') && (
+                      <button className="btn-secondary fp-secondary" onClick={() => resumeDownload(rec.id)}>
+                        <RotateCw size={16} /> {rec.status === 'error' ? 'Try again' : 'Resume'}
+                      </button>
+                    )}
+
+                    {rec && rec.status !== 'completed' && (
+                      <button
+                        className="btn-secondary fp-cancel"
+                        onClick={() => removeDownload(rec.id)}
+                        aria-label="Cancel download"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {player && (
-        <VideoPlayer
-          title={player.film.title}
-          src={player.src}
-          loading={player.loading}
-          startAt={progress[player.film.id] || 0}
-          subtitles={player.subtitles || []}
-          fallbackHref={archivePage(player.film.id)}
-          onClose={closePlayer}
-          onProgress={(s) => {
-            saveProgress(player.film.id, s);
-            recordFilmProgress(player.film, s);
-          }}
-        />
-      )}
+      {/* FIX: player + toast also portaled, same reason as sheet */}
+      {player &&
+        layer(
+          <VideoPlayer
+            title={player.film.title}
+            src={player.src}
+            loading={player.loading}
+            startAt={progress[player.film.id] || 0}
+            subtitles={player.subtitles || []}
+            fallbackHref={archivePage(player.film.id)}
+            onClose={closePlayer}
+            onProgress={(s) => {
+              saveProgress(player.film.id, s);
+              recordFilmProgress(player.film, s);
+            }}
+          />
+        )}
 
-      {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
+      {toast && layer(<div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>)}
     </div>
   );
-                                                               }
+          }
