@@ -14,12 +14,14 @@ import {
   Compass,
   MessageSquare,
   PictureInPicture2,
+  SlidersHorizontal,
   Wifi,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header.jsx';
 import BrandMark from '../components/BrandMark.jsx';
 import { UpdateSheet } from '../components/UpdatePrompt.jsx';
+import { PlayerSettingsSheet } from '../components/PlayerSettings.jsx';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import useHistory from '../hooks/useHistory.js';
 import { useApp } from '../context/AppContext.jsx';
@@ -43,6 +45,7 @@ export default function Settings() {
   const network = useNetwork();
   const [pipOk, setPipOk] = useState(false);
   const [autoPip, setAutoPipState] = useState(autoPipEnabled);
+  const [playerOpen, setPlayerOpen] = useState(false);
 
   useEffect(() => {
     let off = false;
@@ -176,6 +179,12 @@ export default function Settings() {
       </div>
 
       <div className="card">
+        <button className="row" onClick={() => setPlayerOpen(true)}>
+          <SlidersHorizontal size={22} />
+          <span className="row-label">Player settings</span>
+          <ChevronRight size={20} className="muted" />
+        </button>
+
         <button
           className="row"
           onClick={() => setWifiOnly(!network.wifiOnly)}
@@ -261,6 +270,8 @@ export default function Settings() {
           Made for movie lovers ❤️
         </div>
       </div>
+
+      {playerOpen && <PlayerSettingsSheet onClose={() => setPlayerOpen(false)} />}
 
       {update && <UpdateSheet info={update} onLater={() => setUpdate(null)} />}
 
