@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version number, for example 1.3.0
+        description: Version number, for example 1.4.0
         required: true
-        default: '1.3.0'
+        default: '1.4.0'
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
       - name: Check the version and the signing key
         run: |
           if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Use a version like 1.3.0"
+            echo "Use a version like 1.4.0"
             exit 1
           fi
           if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
@@ -44,6 +44,9 @@ jobs:
 
       - run: npm install
 
+      - name: Check that every file is in place (code, imports and logo)
+        run: node scripts/check-imports.mjs
+
       - name: Build the web app
         run: npm run build
         env:
@@ -56,12 +59,36 @@ jobs:
       - name: Create the Android project
         run: npx cap add android
 
-      - name: Icons and splash screen (NexusHD logo)
+      - name: Import the NexusHD logo (app icon and splash screen)
         run: |
-          test -f assets/icon-only.png || { echo "assets/ folder missing"; exit 1; }
+          for f in assets/icon-only.png assets/icon-foreground.png assets/splash.png; do
+            test -f "$f" || { echo "Logo file missing: $f"; exit 1; }
+          done
           npx --yes @capacitor/assets generate --android \
             --iconBackgroundColor '#07040f' --iconBackgroundColorDark '#07040f' \
             --splashBackgroundColor '#07040f' --splashBackgroundColorDark '#07040f'
+
+      - name: Confirm the logo is in the Android project
+        run: |
+          node <<'EOF5'
+          const fs = require('fs');
+          const path = require('path');
+          const res = 'android/app/src/main/res';
+          const dirs = fs.readdirSync(res);
+          const count = (prefix, re) =>
+            dirs
+              .filter((d) => d.startsWith(prefix))
+              .reduce((n, d) => n + fs.readdirSync(path.join(res, d)).filter((f) => re.test(f)).length, 0);
+          const icons = count('mipmap', /^ic_launcher(_round|_foreground)?\./);
+          const splashes = count('drawable', /^splash/);
+          console.log('App icon files:    ' + icons);
+          console.log('Splash screen files: ' + splashes);
+          if (icons === 0 || splashes === 0) {
+            console.error('The NexusHD logo did not reach the Android project. Check the files in the assets folder.');
+            process.exit(1);
+          }
+          console.log('The NexusHD logo is in the app.');
+          EOF5
 
       - name: Fix the adaptive icon background
         run: |
@@ -89,7 +116,6 @@ jobs:
           } else {
             console.log('Background images exist, nothing to fix');
           }
-          EOF3
 
       - name: Make the Android 12+ splash use the NexusHD logo
         run: |
