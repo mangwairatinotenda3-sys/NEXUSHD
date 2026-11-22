@@ -1,0 +1,267 @@
+/* ---------- Player settings and the subtitle text in the player ---------- */
+
+.pp-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 88%;
+  padding-bottom: calc(var(--safe-bottom) + 16px);
+}
+
+.pp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pp-head h3 {
+  margin: 0;
+}
+
+.pp-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pp-reset:disabled {
+  opacity: 0.4;
+}
+
+.pp-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -20px;
+  padding: 0 20px 6px;
+  overscroll-behavior: contain;
+}
+
+.pp-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  color: var(--primary-bright);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.pp-section:first-child {
+  margin-top: 4px;
+}
+
+.pp-group {
+  margin-bottom: 14px;
+}
+
+.pp-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.pp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: transform 0.15s, background 0.2s;
+}
+
+.pp-chip:active {
+  transform: scale(0.95);
+}
+
+.pp-chip.on {
+  border-color: transparent;
+  background: var(--primary);
+  color: #fff;
+}
+
+.pp-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.pp-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-top: 2px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  text-align: left;
+}
+
+.pp-switch-row > svg {
+  flex: 0 0 auto;
+  color: var(--primary-bright);
+}
+
+.pp-switch-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pp-switch-text b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pp-switch-text span {
+  display: block;
+  margin-top: 1px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.pp-preview {
+  display: grid;
+  place-items: end center;
+  min-height: 96px;
+  margin-bottom: 14px;
+  padding: 14px 12px 16px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(168, 85, 247, 0.55), transparent 55%),
+    linear-gradient(160deg, #2b1a4d, #0b0716);
+  text-align: center;
+}
+
+.pp-sub {
+  display: inline-block;
+  max-width: 100%;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.pp-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 12px;
+}
+
+/* the subtitles drawn over the film */
+.pl-subs {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 18px);
+  z-index: 3;
+  width: min(92%, 900px);
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  transition: bottom 0.25s ease;
+}
+
+.player:not(.pl-ui-off) .pl-subs {
+  bottom: calc(var(--safe-bottom) + 112px);
+}
+
+.pl-subs span {
+  display: inline-block;
+  max-width: 100%;
+  line-height: 1.32;
+  font-weight: 600;
+  white-space: pre-line;
+}
+
+.pl-pip .pl-subs {
+  bottom: 6px;
+  --sub-base: 11px;
+}
+
+/* the style page inside the subtitle menu of the player */
+.subs-style {
+  padding: 4px 16px 14px;
+}
+
+.subs-style .pp-preview {
+  min-height: 70px;
+}
+
+.subs-style .pp-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.subs-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 16px 4px;
+  color: var(--primary-bright);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.subs-item.subs-more {
+  color: var(--primary-bright);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-subs {
+    transition: none;
+  }
+}
+
+.subs-menu.subs-wide {
+  width: min(340px, calc(100% - 24px));
+}
+
+.subs-style .pp-chip {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.subs-style .pp-chip.on {
+  border-color: transparent;
+  background: var(--primary);
+}
+
+.subs-style .pp-label {
+  color: rgba(255, 255, 255, 0.62);
+}
