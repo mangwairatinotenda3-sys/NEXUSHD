@@ -24,22 +24,53 @@ jobs:
 
       - run: npm install
 
+      - name: Check that every file is in place (code, imports and logo)
+        run: node scripts/check-imports.mjs
+
+      - name: Read the version from package.json
+        run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+
       - name: Build the web app
         run: npm run build
         env:
           VITE_BUILD: ${{ github.run_number }}
+          VITE_VERSION: ${{ env.APP_VERSION }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Create the Android project
         run: npx cap add android
 
-      - name: Icons and splash screen (NexusHD logo)
+      - name: Import the NexusHD logo (app icon and splash screen)
         run: |
-          test -f assets/icon-only.png || { echo "assets/ folder missing"; exit 1; }
+          for f in assets/icon-only.png assets/icon-foreground.png assets/splash.png; do
+            test -f "$f" || { echo "Logo file missing: $f"; exit 1; }
+          done
           npx --yes @capacitor/assets generate --android \
             --iconBackgroundColor '#07040f' --iconBackgroundColorDark '#07040f' \
             --splashBackgroundColor '#07040f' --splashBackgroundColorDark '#07040f'
+
+      - name: Confirm the logo is in the Android project
+        run: |
+          node <<'EOF5'
+          const fs = require('fs');
+          const path = require('path');
+          const res = 'android/app/src/main/res';
+          const dirs = fs.readdirSync(res);
+          const count = (prefix, re) =>
+            dirs
+              .filter((d) => d.startsWith(prefix))
+              .reduce((n, d) => n + fs.readdirSync(path.join(res, d)).filter((f) => re.test(f)).length, 0);
+          const icons = count('mipmap', /^ic_launcher(_round|_foreground)?\./);
+          const splashes = count('drawable', /^splash/);
+          console.log('App icon files:    ' + icons);
+          console.log('Splash screen files: ' + splashes);
+          if (icons === 0 || splashes === 0) {
+            console.error('The NexusHD logo did not reach the Android project. Check the files in the assets folder.');
+            process.exit(1);
+          }
+          console.log('The NexusHD logo is in the app.');
+          EOF5
 
       - name: Fix the adaptive icon background
         run: |
@@ -67,7 +98,6 @@ jobs:
           } else {
             console.log('Background images exist, nothing to fix');
           }
-          EOF3
 
       - name: Make the Android 12+ splash use the NexusHD logo
         run: |
@@ -131,6 +161,11 @@ jobs:
           </vector>
           EOF4
 
+      - name: Set the version
+        run: |
+          sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"$APP_VERSION\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+
       - name: Copy the web app into the Android project
         run: npx cap sync android
 
@@ -171,6 +206,6 @@ jobs:
           body: |
             Test build of the NexusHD Android app. Download NexusHD-debug.apk below and install it.
 
-            Build ${{ github.run_number }}
+            Version ${{ env.APP_VERSION }} · Build ${{ github.run_number }}
           prerelease: true
           files: NexusHD-debug.apk
