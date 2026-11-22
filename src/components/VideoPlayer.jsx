@@ -12,6 +12,7 @@ import {
   Play,
   RotateCcw,
   RotateCw,
+  Settings2,
   Shrink,
   WifiOff,
 } from 'lucide-react';
@@ -24,7 +25,11 @@ import {
   releaseOrientation,
 } from '../services/orientation.js';
 import { armPip, autoPipEnabled, enterPip, onPipChange, pipAvailable } from '../services/pip.js';
+import usePlayerPrefs, { subtitleStyle } from '../services/playerPrefs.js';
+import { FINISHED_AT, addWatchTime, markFinished } from '../services/watchStats.js';
+import { SubtitleStyleControls, SubtitlePreview } from './PlayerSettings.jsx';
 import '../styles/player.css';
+import '../styles/playerprefs.css';
 
 const REASONS = {
   1: 'The video was stopped.',
@@ -36,7 +41,6 @@ const REASONS = {
 const PREF_KEY = 'nexushd:subs-pref';
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const HIDE_AFTER = 3500;
-const SKIP = 10;
 
 const readPref = () => {
   try {
@@ -83,12 +87,20 @@ function RotateScreenIcon() {
   );
 }
 
-function SkipIcon({ back }) {
+/* keeps the tags a subtitle may use (italic, bold, underline) and drops the rest */
+const cleanCue = (text = '') =>
+  text.replace(/<\/?([a-z0-9.]+)[^>]*>/gi, (tag, name) => {
+    const n = name.toLowerCase();
+    if (n !== 'i' && n !== 'b' && n !== 'u') return '';
+    return tag.startsWith('</') ? `</${n}>` : `<${n}>`;
+  });
+
+function SkipIcon({ back, seconds }) {
   const Icon = back ? RotateCcw : RotateCw;
   return (
     <span className="pl-skip-ico">
       <Icon size={36} strokeWidth={1.7} />
-      <b>{SKIP}</b>
+      <b>{seconds}</b>
     </span>
   );
 }
@@ -112,6 +124,16 @@ export default function VideoPlayer({
   const noteTimer = useRef(null);
   const subsRef = useRef(subtitles);
   subsRef.current = subtitles;
+  const prefs = usePlayerPrefs();
+  const skipBy = prefs.skip;
+  const skipRef = useRef(skipBy);
+  skipRef.current = skipBy;
+  const remember = prefs.remember;
+  const rememberRef = useRef(remember);
+  rememberRef.current = remember;
+  const watchRef = useRef({ last: null, pending: 0, flushed: 0, finished: false });
+  const titleRef = useRef(title);
+  titleRef.current = title;
 
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -128,7 +150,8 @@ export default function VideoPlayer({
   const [activity, setActivity] = useState(0);
   const [locked, setLocked] = useState(false);
   const [scrub, setScrub] = useState(null); // 0..1 while the bar is being dragged
-  const [rate, setRate] = useState(1);
+  const [rate, setRate] = useState(() => prefs.speed);
+  const [cueHtml, setCueHtml] = useState('');
   const [fill, setFill] = useState(false);
   const [landscape, setLandscape] = useState(isLandscape);
   const [flash, setFlash] = useState(null); // { side, amount }
@@ -137,7 +160,7 @@ export default function VideoPlayer({
   const [inPip, setInPip] = useState(false);
 
   // subtitles
-  const [menu, setMenu] = useState(null); // null | 'subs' | 'speed'
+  const [menu, setMenu] = useState(null); // null | 'subs' | 'substyle' | 'speed'
   const [choice, setChoice] = useState(readPref); // a subtitle label, or 'off'
   const [subUrl, setSubUrl] = useState(null);
   const [subState, setSubState] = useState('idle'); // idle | loading | error
@@ -155,7 +178,24 @@ export default function VideoPlayer({
     setReason('');
     setWaiting(true);
     setSlow(false);
+    watchRef.current = { last: null, pending: 0, flushed: 0, finished: false };
   }, [src]);
+
+  // hand the time you really watched to "Your stats", now and then and when the player closes
+  useEffect(() => {
+    const send = () => {
+      const w = watchRef.current;
+      if (w.pending >= 1) {
+        addWatchTime(titleRef.current, w.pending);
+        w.pending = 0;
+      }
+    };
+    const timer = setInterval(send, 20000);
+    return () => {
+      clearInterval(timer);
+      send();
+    };
+  }, []);
 
   // Like a movie app: the Android app opens a film in landscape and gives the
   // screen back to the phone when it closes
@@ -243,7 +283,6 @@ export default function VideoPlayer({
     const timer = setTimeout(() => setVisible(false), HIDE_AFTER);
     return () => clearTimeout(timer);
   }, [visible, playing, menu, scrub, activity]);
-
   // load the chosen subtitles as a WebVTT file the video can show
   useEffect(() => {
     const track = subsRef.current.find((s) => `${s.label}|${s.url || ''}` === selectedKey);
@@ -275,17 +314,33 @@ export default function VideoPlayer({
   }, [selectedKey]);
 
   // make sure the track is switched on when it is added, and off when it is not
+  // The subtitles are drawn by the app (so size, colour and background can change),
+  // so the video's own subtitle display stays off and we only read the lines from it.
   useEffect(() => {
     const video = videoRef.current;
+    setCueHtml('');
     if (!video) return undefined;
+    const attached = new Set();
+    const read = (e) => {
+      const track = e.target;
+      const lines = Array.from(track.activeCues || []).map((c) => cleanCue(c.text));
+      setCueHtml(lines.join('\n'));
+    };
     const apply = () => {
       Array.from(video.textTracks).forEach((t) => {
-        t.mode = subUrl ? 'showing' : 'disabled';
+        t.mode = subUrl ? 'hidden' : 'disabled';
+        if (!attached.has(t)) {
+          attached.add(t);
+          t.addEventListener('cuechange', read);
+        }
       });
     };
     apply();
     video.textTracks.addEventListener('addtrack', apply);
-    return () => video.textTracks.removeEventListener('addtrack', apply);
+    return () => {
+      video.textTracks.removeEventListener('addtrack', apply);
+      attached.forEach((t) => t.removeEventListener('cuechange', read));
+    };
   }, [subUrl, current]);
 
   const poke = useCallback(() => {
@@ -319,7 +374,8 @@ export default function VideoPlayer({
     if (show) {
       setFlash((f) => {
         const side = delta < 0 ? 'left' : 'right';
-        return { side, amount: f && f.side === side ? f.amount + SKIP : SKIP };
+        const step = Math.abs(delta);
+        return { side, amount: f && f.side === side ? f.amount + step : step };
       });
       clearTimeout(flashTimer.current);
       flashTimer.current = setTimeout(() => setFlash(null), 750);
@@ -335,9 +391,9 @@ export default function VideoPlayer({
         e.preventDefault();
         togglePlay();
       } else if (e.key === 'ArrowLeft') {
-        skip(-SKIP, true);
+        skip(-skipRef.current, true);
       } else if (e.key === 'ArrowRight') {
-        skip(SKIP, true);
+        skip(skipRef.current, true);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -356,7 +412,7 @@ export default function VideoPlayer({
 
     if (!locked && side !== 'mid' && last.side === side && now - last.time < 300) {
       lastTap.current = { time: 0, side: '', timer: null };
-      skip(side === 'left' ? -SKIP : SKIP, true);
+      skip(side === 'left' ? -skipRef.current : skipRef.current, true);
       return;
     }
 
@@ -378,7 +434,7 @@ export default function VideoPlayer({
   };
 
   const onSeekDown = (e) => {
-        if (!duration) return;
+    if (!duration) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setScrub(ratioFrom(e));
   };
@@ -432,7 +488,7 @@ export default function VideoPlayer({
     if (!v) return;
     v.playbackRate = rate;
     setDuration(Number.isFinite(v.duration) ? v.duration : 0);
-    if (startAt > 10 && startAt < v.duration - 30) v.currentTime = startAt;
+    if (rememberRef.current && startAt > 10 && startAt < v.duration - 30) v.currentTime = startAt;
   };
 
   const updateBuffered = () => {
@@ -445,10 +501,32 @@ export default function VideoPlayer({
     const v = videoRef.current;
     if (!v) return;
     setTime(v.currentTime);
+
+    // count the seconds of film really watched (not skipped over, not paused)
+    const w = watchRef.current;
+    if (w.last !== null && !v.paused) {
+      const step = v.currentTime - w.last;
+      if (step > 0 && step < 2.5) w.pending += step;
+    }
+    w.last = v.currentTime;
+    if (
+      !w.finished &&
+      Number.isFinite(v.duration) &&
+      v.duration > 120 &&
+      v.currentTime >= v.duration - FINISHED_AT
+    ) {
+      w.finished = true;
+      if (w.pending >= 1) {
+        addWatchTime(titleRef.current, w.pending);
+        w.pending = 0;
+      }
+      markFinished(titleRef.current);
+    }
+
     const now = Math.floor(v.currentTime);
     if (Math.abs(now - lastSave.current) >= 5) {
       lastSave.current = now;
-      onProgress?.(now);
+      if (rememberRef.current) onProgress?.(now);
     }
   };
 
@@ -515,17 +593,23 @@ export default function VideoPlayer({
             onEnded={() => {
               setPlaying(false);
               setVisible(true);
-              onProgress?.(0);
+              if (rememberRef.current) onProgress?.(0);
             }}
             onError={onError}
           >
             {subUrl && selected && (
-              <track key={subUrl} kind="subtitles" src={subUrl} label={selected.label} srcLang="en" default />
+              <track key={subUrl} kind="subtitles" src={subUrl} label={selected.label} srcLang="en" />
             )}
           </video>
 
           {/* taps land here */}
           <div className="pl-tap" onClick={onTap} />
+
+          {cueHtml && (
+            <div className="pl-subs" aria-live="off">
+              <span style={subtitleStyle(prefs)} dangerouslySetInnerHTML={{ __html: cueHtml }} />
+            </div>
+          )}
 
           {flash && (
             <div className={`pl-flash ${flash.side}`} key={`${flash.side}-${flash.amount}`}>
@@ -570,14 +654,14 @@ export default function VideoPlayer({
       {canPlay && (
         <>
           <div className="pl-center">
-            <button className="pl-skip" onClick={() => { skip(-SKIP, true); poke(); }} aria-label="Back 10 seconds">
-              <SkipIcon back />
+            <button className="pl-skip" onClick={() => { skip(-skipBy, true); poke(); }} aria-label={`Back ${skipBy} seconds`}>
+              <SkipIcon back seconds={skipBy} />
             </button>
             <button className="pl-play" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>
               {playing ? <Pause size={34} fill="currentColor" /> : <Play size={34} fill="currentColor" />}
             </button>
-            <button className="pl-skip" onClick={() => { skip(SKIP, true); poke(); }} aria-label="Forward 10 seconds">
-              <SkipIcon />
+            <button className="pl-skip" onClick={() => { skip(skipBy, true); poke(); }} aria-label={`Forward ${skipBy} seconds`}>
+              <SkipIcon seconds={skipBy} />
             </button>
           </div>
 
@@ -697,6 +781,21 @@ export default function VideoPlayer({
         </div>
       )}
 
+      {menu === 'substyle' && (
+        <div className="subs-backdrop" onClick={() => setMenu(null)}>
+          <div className="subs-menu subs-wide" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <button className="subs-back" onClick={() => setMenu('subs')}>
+              <ChevronLeft size={18} /> Subtitles
+            </button>
+            <div className="subs-head">Subtitle style</div>
+            <div className="subs-style">
+              <SubtitlePreview />
+              <SubtitleStyleControls />
+            </div>
+          </div>
+        </div>
+      )}
+
       {menu === 'subs' && (
         <div className="subs-backdrop" onClick={() => setMenu(null)}>
           <div className="subs-menu" role="menu" onClick={(e) => e.stopPropagation()}>
@@ -716,6 +815,10 @@ export default function VideoPlayer({
                 {selected?.label === s.label && <Check size={18} />}
               </button>
             ))}
+            <button className="subs-item subs-more" role="menuitem" onClick={() => setMenu('substyle')}>
+              <span>Subtitle style</span>
+              <Settings2 size={18} />
+            </button>
             {subState === 'loading' && <div className="subs-note">Loading subtitles…</div>}
             {subState === 'error' && (
               <div className="subs-note bad">Couldn't load these subtitles. Try another.</div>
@@ -739,4 +842,4 @@ export default function VideoPlayer({
       )}
     </div>
   );
-    }
+      }
