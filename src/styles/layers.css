@@ -1,0 +1,5 @@
+/* A page fades in once. After that it must not keep a layer of its own,
+   otherwise the sheets opened inside it end up under the bottom menu. */
+.page {
+  animation-fill-mode: backwards;
+}
