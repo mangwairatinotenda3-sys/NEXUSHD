@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -37,7 +36,8 @@ import {
   searchFreeFilms,
 } from '../services/archive.js';
 import { formatBytes } from '../utils/format.js';
-import { shareLink } from '../services/share.js';
+import { shareFilm } from '../services/links.js';
+import { whenOnline } from '../services/connection.js';
 import '../styles/free.css';
 import '../styles/filmpage.css';
 
@@ -124,12 +124,6 @@ export default function FreeFilms() {
   keyRef.current = `${term}|${sort}`;
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
-
-  // No bottom tab bar on the Free Films page
-  useEffect(() => {
-    document.body.classList.add('hide-nav');
-    return () => document.body.classList.remove('hide-nav');
-  }, []);
 
   const showToast = (message) => {
     setToast(message);
@@ -253,13 +247,15 @@ export default function FreeFilms() {
         setPlayer({ film, src: null, loading: false, offline: true, subtitles: [] });
       }
     } else {
-      setPlayer({
-        film,
-        src: film.src,
-        loading: false,
-        offline: false,
-        subtitles: film.subs || [],
-      });
+      whenOnline(() =>
+        setPlayer({
+          film,
+          src: film.src,
+          loading: false,
+          offline: false,
+          subtitles: film.subs || [],
+        })
+      );
     }
   };
 
@@ -295,11 +291,7 @@ export default function FreeFilms() {
   }, [playParam]);
 
   const share = async (film) => {
-    const result = await shareLink({
-      title: film.title,
-      text: `Watch ${film.title}, a free public domain film, on the Internet Archive:`,
-      url: archivePage(film.id),
-    });
+    const result = await shareFilm(film);
     if (result === 'copied') showToast('Link copied');
     else if (result === 'failed') showToast("Couldn't share this film");
   };
@@ -339,7 +331,8 @@ export default function FreeFilms() {
           autoCorrect="off"
           spellCheck={false}
         />
-        {query && (
+
+                {query && (
           <button type="button" onClick={() => setQuery('')} aria-label="Clear search">
             <X size={15} />
           </button>
@@ -428,7 +421,7 @@ export default function FreeFilms() {
         />
       )}
 
-            {selected && createPortal(
+      {selected && (
         <div className="sheet-backdrop film-page" onClick={() => setSelected(null)}>
           <div className="fp" onClick={(e) => e.stopPropagation()}>
             <div className="fp-scroll">
@@ -630,29 +623,26 @@ export default function FreeFilms() {
               )}
             </div>
           </div>
-        </div>,
-        document.querySelector('.app-shell') || document.body
+        </div>
       )}
 
-      {player &&
-        createPortal(
-          <VideoPlayer
-            title={player.film.title}
-            src={player.src}
-            loading={player.loading}
-            startAt={progress[player.film.id] || 0}
-            subtitles={player.subtitles || []}
-            fallbackHref={archivePage(player.film.id)}
-            onClose={closePlayer}
-            onProgress={(s) => {
-              saveProgress(player.film.id, s);
-              recordFilmProgress(player.film, s);
-            }}
-          />,
-          document.querySelector('.app-shell') || document.body
-        )}
+      {player && (
+        <VideoPlayer
+          title={player.film.title}
+          src={player.src}
+          loading={player.loading}
+          startAt={progress[player.film.id] || 0}
+          subtitles={player.subtitles || []}
+          fallbackHref={archivePage(player.film.id)}
+          onClose={closePlayer}
+          onProgress={(s) => {
+            saveProgress(player.film.id, s);
+            recordFilmProgress(player.film, s);
+          }}
+        />
+      )}
 
       {toast && <div className="toast" style={{ bottom: 'calc(var(--safe-bottom) + 24px)' }}>{toast}</div>}
     </div>
   );
-                      }
+                                                               }
