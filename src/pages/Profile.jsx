@@ -23,6 +23,7 @@ import {
 import Header from '../components/Header.jsx';
 import BrandMark from '../components/BrandMark.jsx';
 import AvatarViewer from '../components/AvatarViewer.jsx';
+import ProfileStats from '../components/ProfileStats.jsx';
 import useWatchlist from '../hooks/useWatchlist.js';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -181,7 +182,7 @@ function ForgotForm({ initialEmail, onBack, requestPasswordReset }) {
       )}
     </div>
   );
-                }
+}
 
 /* ---------- Sign in / create account ---------- */
 
@@ -417,7 +418,7 @@ function AuthForm({
       </form>
     </div>
   );
-        }
+  }
 
 /* ---------- New password (from the reset link) ---------- */
 
@@ -796,7 +797,7 @@ function DeleteAccountSheet({ onDelete, onClose }) {
       </form>
     </div>
   );
-            }
+        }
 
 /* ---------- Page ---------- */
 
@@ -969,6 +970,8 @@ export default function Profile() {
         {memberSince && <div className="profile-since">Member since {memberSince}</div>}
       </div>
 
+      <ProfileStats onToast={showToast} />
+
       <div className="card">
         <button className="row" onClick={() => navigate('/library')}>
           <Bookmark size={22} />
@@ -1074,4 +1077,4 @@ export default function Profile() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
-    }
+          }
