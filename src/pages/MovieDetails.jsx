@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -71,6 +72,13 @@ const STATUS = {
   Pilot: { label: 'Pilot', live: false },
   Ended: { label: 'Ended', live: false },
   Canceled: { label: 'Canceled', live: false },
+};
+
+/* Sheets, players and toasts are drawn on the app shell itself, so the bottom
+   menu and the pinned buttons can never cover them. */
+const layer = (node) => {
+  const shell = typeof document !== 'undefined' ? document.querySelector('.app-shell') : null;
+  return shell ? createPortal(node, shell) : node;
 };
 
 const normalize = (s) =>
@@ -455,33 +463,36 @@ export default function MovieDetails({ kind = 'movie' }) {
         )}
       </div>
 
-      {trailerOpen && trailer && (
-        <TrailerPlayer
-          videoId={trailer.key}
-          title={m.title}
-          onClose={() => setTrailerOpen(false)}
-        />
-      )}
+      {trailerOpen &&
+        trailer &&
+        layer(
+          <TrailerPlayer
+            videoId={trailer.key}
+            title={m.title}
+            onClose={() => setTrailerOpen(false)}
+          />
+        )}
 
-      {freePlayer && (
-        <VideoPlayer
-          title={freePlayer.film.title}
-          src={freePlayer.src}
-          loading={freePlayer.loading}
-          startAt={progress[freePlayer.film.id] || 0}
-          fallbackHref={archivePage(freePlayer.film.id)}
-          onClose={closeFree}
-          onProgress={(s) => setProgress((prev) => ({ ...prev, [freePlayer.film.id]: s }))}
-        />
-      )}
+      {freePlayer &&
+        layer(
+          <VideoPlayer
+            title={freePlayer.film.title}
+            src={freePlayer.src}
+            loading={freePlayer.loading}
+            startAt={progress[freePlayer.film.id] || 0}
+            fallbackHref={archivePage(freePlayer.film.id)}
+            onClose={closeFree}
+            onProgress={(s) => setProgress((prev) => ({ ...prev, [freePlayer.film.id]: s }))}
+          />
+        )}
 
-      {listOpen && <ListSheet movie={m} onClose={() => setListOpen(false)} onToast={showToast} />}
+      {listOpen &&
+        layer(<ListSheet movie={m} onClose={() => setListOpen(false)} onToast={showToast} />)}
 
-      {remindOpen && (
-        <RemindSheet movie={m} onClose={() => setRemindOpen(false)} onToast={showToast} />
-      )}
+      {remindOpen &&
+        layer(<RemindSheet movie={m} onClose={() => setRemindOpen(false)} onToast={showToast} />)}
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && layer(<div className="toast">{toast}</div>)}
     </div>
   );
-                  }
+  }
