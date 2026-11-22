@@ -10,6 +10,7 @@ import useOnline from '../hooks/useOnline.js';
 import useDownloads, { pauseDownload, resumeDownload } from '../services/downloadManager.js';
 import '../styles/offline.css';
 import '../styles/adaptive.css';
+import '../styles/layers.css';
 
 const HIDE_NAV_ON = ['/settings'];
 
