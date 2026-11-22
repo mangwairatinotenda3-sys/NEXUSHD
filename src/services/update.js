@@ -8,7 +8,7 @@ import { Capacitor } from '@capacitor/core';
      release of the repository.
    - Test builds follow the "android-latest" test release. */
 
-export const APP_VERSION = import.meta.env.VITE_VERSION || '1.3.0';
+export const APP_VERSION = import.meta.env.VITE_VERSION || '1.4.0';
 export const BUILD = Number(import.meta.env.VITE_BUILD) || 0;
 
 const REPO = 'mangwairatinotenda3-sys/NEXUSHD';
@@ -79,4 +79,4 @@ export async function checkForUpdate({ force = false } = {}) {
   };
   write(CHECK_KEY, latest);
   return answer(latest);
-   }
+}
