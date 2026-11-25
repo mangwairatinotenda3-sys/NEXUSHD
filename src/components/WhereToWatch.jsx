@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, ExternalLink, Search, Tv2 } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage.js';
 import { tmdb, imageUrl, useMovies } from '../services/tmdb.js';
@@ -150,10 +150,35 @@ function Provider({ p, link }) {
   );
 }
 
+/* Only one "Where to watch" is ever drawn for a title. If a page asks for it
+   twice (for example after a file was pasted twice), the extra copies stay empty. */
+const owners = new Map();
+
+function useSingle(key) {
+  const me = useRef({});
+  const [extra, setExtra] = useState(false);
+  useEffect(() => {
+    const mine = me.current;
+    if (owners.has(key) && owners.get(key) !== mine) {
+      setExtra(true);
+    } else {
+      owners.set(key, mine);
+      setExtra(false);
+    }
+    return () => {
+      if (owners.get(key) === mine) owners.delete(key);
+    };
+  }, [key]);
+  return extra;
+}
+
 export default function WhereToWatch({ kind, id }) {
   const [saved, setSaved] = useLocalStorage('nexushd:region', '');
   const [picking, setPicking] = useState(false);
+  const extra = useSingle(`${kind}-${id}`);
   const { data, loading, error } = useMovies(() => tmdb.watchProviders(kind, id), [kind, id]);
+
+  if (extra) return null;
 
   if (loading) {
     return (
@@ -244,4 +269,4 @@ export default function WhereToWatch({ kind, id }) {
       )}
     </section>
   );
-}
+   }
