@@ -33,41 +33,6 @@
     border-right: 0;
   }
 
-  /* the tab bar becomes a rail on the left */
-  .app-shell .bottom-nav {
-    top: 0;
-    right: auto;
-    width: 92px;
-    height: auto;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 6px;
-    padding: calc(var(--safe-top) + 28px) 8px 24px;
-    border-top: 0;
-    border-right: 1px solid var(--card-border);
-    border-radius: 0 24px 24px 0;
-  }
-
-  .app-shell .nav-item {
-    flex: 0 0 auto;
-    height: 72px;
-    border-radius: 16px;
-  }
-
-  .app-shell .nav-item.active {
-    background: var(--primary-soft);
-  }
-
-  .app-shell .app-content {
-    padding-left: 92px;
-    padding-bottom: 28px;
-  }
-
-  .app-shell .app-content.no-nav,
-  body.hide-nav .app-shell .app-content {
-    padding-left: 0;
-  }
-
   .app-content > .page {
     max-width: 1500px;
     margin: 0 auto;
@@ -134,6 +99,43 @@
   }
 }
 
+/* tablets and computers: the tab bar becomes a rail on the left */
+@media (min-width: 700px) and (min-height: 481px) {
+  .app-shell .bottom-nav {
+    top: 0;
+    right: auto;
+    width: 92px;
+    height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: calc(var(--safe-top) + 28px) 8px 24px;
+    border-top: 0;
+    border-right: 1px solid var(--card-border);
+    border-radius: 0 24px 24px 0;
+  }
+
+  .app-shell .nav-item {
+    flex: 0 0 auto;
+    height: 72px;
+    border-radius: 16px;
+  }
+
+  .app-shell .nav-item.active {
+    background: var(--primary-soft);
+  }
+
+  .app-shell .app-content {
+    padding-left: 92px;
+    padding-bottom: 28px;
+  }
+
+  .app-shell .app-content.no-nav,
+  body.hide-nav .app-shell .app-content {
+    padding-left: 0;
+  }
+}
+
 /* big screens */
 @media (min-width: 1100px) {
   .app-shell .lib-list {
@@ -145,7 +147,7 @@
   }
 }
 
-/* a phone turned sideways: no tab bar, the app fills the whole screen */
+/* a phone turned sideways: the menu floats at the bottom and the app fills the screen */
 @media (max-height: 480px) and (orientation: landscape) {
   .app-shell {
     max-width: none;
@@ -153,14 +155,18 @@
     border-right: 0;
   }
 
-  .app-shell .bottom-nav {
-    display: none;
-  }
-
   .app-shell .app-content,
   .app-shell .app-content.no-nav,
   body.hide-nav .app-shell .app-content {
     padding-left: 0;
+  }
+
+  .app-shell .app-content {
+    padding-bottom: calc(var(--safe-bottom, 0px) + 84px);
+  }
+
+  .app-shell .app-content.no-nav,
+  body.hide-nav .app-shell .app-content {
     padding-bottom: calc(var(--safe-bottom, 0px) + 16px);
   }
      }
