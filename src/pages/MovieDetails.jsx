@@ -415,53 +415,57 @@ export default function MovieDetails({ kind = 'movie' }) {
         onOpen={(item) => navigate(`/${kind}/${item.id}`)}
       />
 
-      <div className="d-bar">
-        {freeFilm ? (
-          <button className="btn-primary d-bar-main" onClick={playFree}>
-            <Play size={20} fill="currentColor" /> Watch free film
-          </button>
-        ) : (
-          <button className="btn-primary d-bar-main" disabled={!trailer} onClick={openTrailer}>
-            <Play size={20} fill="currentColor" />
-            {trailer ? 'Watch Trailer' : 'No trailer'}
-          </button>
-        )}
-        {freeFilm && trailer && (
-          <button className="d-bar-btn" onClick={openTrailer} aria-label="Watch trailer">
-            <Tv size={22} />
-          </button>
-        )}
-        <button
-          className={`d-bar-btn ${saved ? 'on' : ''}`}
-          onClick={onToggleSave}
-          aria-label={saved ? 'Remove from My List' : 'Add to My List'}
-          aria-pressed={saved}
-        >
-          {saved ? <BookmarkCheck size={22} /> : <Bookmark size={22} />}
-        </button>
-        <button className="d-bar-btn" onClick={() => setListOpen(true)} aria-label="Save to a list">
-          <ListPlus size={22} />
-        </button>
-        {unreleased ? (
+      <div className="d-bar-space" aria-hidden="true" />
+
+      {layer(
+        <div className="d-bar">
+          {freeFilm ? (
+            <button className="btn-primary d-bar-main" onClick={playFree}>
+              <Play size={20} fill="currentColor" /> Watch free film
+            </button>
+          ) : (
+            <button className="btn-primary d-bar-main" disabled={!trailer} onClick={openTrailer}>
+              <Play size={20} fill="currentColor" />
+              {trailer ? 'Watch Trailer' : 'No trailer'}
+            </button>
+          )}
+          {freeFilm && trailer && (
+            <button className="d-bar-btn" onClick={openTrailer} aria-label="Watch trailer">
+              <Tv size={22} />
+            </button>
+          )}
           <button
-            className={`d-bar-btn ${reminder ? 'on' : ''}`}
-            onClick={() => setRemindOpen(true)}
-            aria-label={reminder ? 'Reminder on' : 'Remind me'}
-            aria-pressed={Boolean(reminder)}
+            className={`d-bar-btn ${saved ? 'on' : ''}`}
+            onClick={onToggleSave}
+            aria-label={saved ? 'Remove from My List' : 'Add to My List'}
+            aria-pressed={saved}
           >
-            {reminder ? <BellRing size={22} /> : <Bell size={22} />}
+            {saved ? <BookmarkCheck size={22} /> : <Bookmark size={22} />}
           </button>
-        ) : (
-          <button
-            className={`d-bar-btn ${seen ? 'on' : ''}`}
-            onClick={onToggleWatched}
-            aria-label={seen ? 'Watched' : 'Mark watched'}
-            aria-pressed={seen}
-          >
-            <Eye size={22} />
+          <button className="d-bar-btn" onClick={() => setListOpen(true)} aria-label="Save to a list">
+            <ListPlus size={22} />
           </button>
-        )}
-      </div>
+          {unreleased ? (
+            <button
+              className={`d-bar-btn ${reminder ? 'on' : ''}`}
+              onClick={() => setRemindOpen(true)}
+              aria-label={reminder ? 'Reminder on' : 'Remind me'}
+              aria-pressed={Boolean(reminder)}
+            >
+              {reminder ? <BellRing size={22} /> : <Bell size={22} />}
+            </button>
+          ) : (
+            <button
+              className={`d-bar-btn ${seen ? 'on' : ''}`}
+              onClick={onToggleWatched}
+              aria-label={seen ? 'Watched' : 'Mark watched'}
+              aria-pressed={seen}
+            >
+              <Eye size={22} />
+            </button>
+          )}
+        </div>
+      )}
 
       {trailerOpen &&
         trailer &&
