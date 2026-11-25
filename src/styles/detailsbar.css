@@ -1,7 +1,5 @@
 /* Buttons pinned at the bottom of a title page */
 .d-bar {
-  position: sticky;
-  bottom: calc(var(--nav-height, 64px) + var(--safe-bottom, 0px));
   z-index: 20;
   display: flex;
   align-items: center;
@@ -55,4 +53,54 @@
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
   backdrop-filter: blur(8px);
+}
+
+/* The buttons are drawn on the app shell, right above the bottom menu */
+.app-shell > .d-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--nav-height, 68px) + var(--safe-bottom, 0px));
+  margin: 0;
+  z-index: 20;
+}
+
+/* room at the end of the page so the last row is never hidden behind the buttons */
+.d-bar-space {
+  height: 84px;
+}
+
+/* tablets and computers: the tab bar is a rail on the left */
+@media (min-width: 700px) {
+  .app-shell > .d-bar {
+    left: 92px;
+    bottom: var(--safe-bottom, 0px);
+  }
+
+  .d-bar-space {
+    height: 70px;
+  }
+}
+
+/* a phone turned sideways: no tab bar, the buttons sit at the bottom edge */
+@media (max-height: 480px) and (orientation: landscape) {
+  .app-shell > .d-bar {
+    left: 0;
+    bottom: var(--safe-bottom, 0px);
+    padding-top: 14px;
+  }
+
+  .d-bar-main,
+  .d-bar-btn {
+    min-height: 44px;
+  }
+
+  .d-bar-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .d-bar-space {
+    height: 66px;
+  }
 }
