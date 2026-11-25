@@ -55,23 +55,29 @@
   backdrop-filter: blur(8px);
 }
 
-/* The buttons are drawn on the app shell, right above the bottom menu */
+/* The buttons are drawn on the app shell, right above the floating menu.
+   When the menu slides away they drop down to the bottom edge. */
 .app-shell > .d-bar {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--nav-height, 68px) + var(--safe-bottom, 0px));
+  bottom: calc(var(--nav-height, 68px) + var(--safe-bottom, 0px) + 8px);
   margin: 0;
   z-index: 20;
+  transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body.nav-away .app-shell > .d-bar {
+  bottom: var(--safe-bottom, 0px);
 }
 
 /* room at the end of the page so the last row is never hidden behind the buttons */
 .d-bar-space {
-  height: 84px;
+  height: 150px;
 }
 
-/* tablets and computers: the tab bar is a rail on the left */
-@media (min-width: 700px) {
+/* tablets and computers: the menu is a rail on the left */
+@media (min-width: 700px) and (min-height: 481px) {
   .app-shell > .d-bar {
     left: 92px;
     bottom: var(--safe-bottom, 0px);
@@ -82,16 +88,13 @@
   }
 }
 
-/* a phone turned sideways: no tab bar, the buttons sit at the bottom edge */
+/* a phone turned sideways: smaller buttons */
 @media (max-height: 480px) and (orientation: landscape) {
   .app-shell > .d-bar {
-    left: 0;
-    bottom: var(--safe-bottom, 0px);
     padding-top: 14px;
   }
 
-  .d-bar-main,
-  .d-bar-btn {
+  .d-bar-main {
     min-height: 44px;
   }
 
@@ -101,6 +104,6 @@
   }
 
   .d-bar-space {
-    height: 66px;
+    height: 130px;
   }
 }
