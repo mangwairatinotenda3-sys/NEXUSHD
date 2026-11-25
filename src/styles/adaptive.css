@@ -144,32 +144,22 @@
   }
 }
 
-/* a phone turned sideways (only possible when something unlocks rotation) */
+/* a phone turned sideways: no tab bar, the app fills the whole screen */
 @media (max-height: 480px) and (orientation: landscape) {
+  .app-shell {
+    max-width: none;
+    border-left: 0;
+    border-right: 0;
+  }
+
   .app-shell .bottom-nav {
-    top: 0;
-    right: auto;
-    width: 76px;
-    height: auto;
-    flex-direction: column;
-    justify-content: center;
-    padding: 6px 6px;
-    border-top: 0;
-    border-right: 1px solid var(--card-border);
-    border-radius: 0 20px 20px 0;
+    display: none;
   }
 
-  .app-shell .nav-item {
-    flex: 1 1 0;
-  }
-
-  .app-shell .app-content {
-    padding-left: 76px;
-    padding-bottom: 16px;
-  }
-
+  .app-shell .app-content,
   .app-shell .app-content.no-nav,
   body.hide-nav .app-shell .app-content {
     padding-left: 0;
+    padding-bottom: calc(var(--safe-bottom, 0px) + 16px);
   }
-    }
+     }
