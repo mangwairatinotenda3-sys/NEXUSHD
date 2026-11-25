@@ -10,3 +10,27 @@ body .app-shell {
   max-width: none;
   margin: 0;
 }
+
+/* The menu floats above the page on phones (upright and sideways) and slides
+   away while you scroll down. Tablets and computers get a rail instead. */
+@media (max-width: 699px), (max-height: 480px) and (orientation: landscape) {
+  .app-shell .bottom-nav {
+    left: 0;
+    right: 0;
+    bottom: calc(var(--safe-bottom, 0px) + 10px);
+    width: min(460px, calc(100% - 24px));
+    height: 64px;
+    margin: 0 auto;
+    padding: 6px 8px;
+    border: 1px solid var(--card-border);
+    border-radius: 26px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease;
+  }
+
+  .app-shell .bottom-nav.away {
+    transform: translateY(calc(100% + var(--safe-bottom, 0px) + 24px));
+    opacity: 0;
+    pointer-events: none;
+  }
+     }
