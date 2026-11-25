@@ -3,3 +3,10 @@
 .page {
   animation-fill-mode: backwards;
 }
+
+/* The app always fills the whole screen, on phones, tablets and computers */
+body .app-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
