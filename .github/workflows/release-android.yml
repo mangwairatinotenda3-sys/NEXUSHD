@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version number, for example 1.4.0
+        description: Version number, for example 1.4.1
         required: true
-        default: '1.4.0'
+        default: '1.4.1'
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
       - name: Check the version and the signing key
         run: |
           if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Use a version like 1.4.0"
+            echo "Use a version like 1.4.1"
             exit 1
           fi
           if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
@@ -116,6 +116,7 @@ jobs:
           } else {
             console.log('Background images exist, nothing to fix');
           }
+          EOF3
 
       - name: Make the Android 12+ splash use the NexusHD logo
         run: |
