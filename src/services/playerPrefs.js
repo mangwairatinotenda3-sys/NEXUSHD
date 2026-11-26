@@ -89,13 +89,15 @@ export function resetPlayerPrefs() {
 
 export const isDefault = (p) => Object.keys(DEFAULTS).every((k) => p[k] === DEFAULTS[k]);
 
-/* The look of subtitle text for the current choices (a React style object) */
+/* The look of subtitle text for the current choices (a React style object).
+   The base size follows the smaller of the screen's width and height, so a phone
+   turned sideways does not get giant subtitles. */
 export function subtitleStyle(p) {
   const size = SUB_SIZES.find((s) => s.id === p.subSize) || SUB_SIZES[1];
   const color = SUB_COLORS.find((c) => c.id === p.subColor) || SUB_COLORS[0];
   const style = {
     color: color.value,
-    fontSize: `calc(var(--sub-base, clamp(15px, 2.7vw, 30px)) * ${size.scale})`,
+    fontSize: `calc(var(--sub-base, clamp(14px, min(2.7vw, 4.6vh), 28px)) * ${size.scale})`,
   };
   if (p.subBack === 'box') {
     style.background = 'rgba(0, 0, 0, 0.74)';
