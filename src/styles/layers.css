@@ -9,6 +9,24 @@ body .app-shell {
   width: 100%;
   max-width: none;
   margin: 0;
+  height: 100%;
+  height: 100dvh;
+}
+
+/* A sheet is never taller than what you can see, and scrolls inside when it needs to */
+.app-shell .sheet {
+  max-height: 92%;
+  max-height: min(92%, 92dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-shell .pp-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 88%;
+  max-height: min(88%, calc(100dvh - 40px));
 }
 
 /* The menu floats above the page on phones (upright and sideways) and slides
@@ -33,4 +51,4 @@ body .app-shell {
     opacity: 0;
     pointer-events: none;
   }
-     }
+}
