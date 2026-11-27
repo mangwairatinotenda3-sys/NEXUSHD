@@ -1,0 +1,485 @@
+/* Profile: hero, level, shortcut tiles, achievements, recently watched,
+   and the password strength bar used by the sign-in forms. */
+
+/* ---------- Hero ---------- */
+.pf-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 20px 16px;
+  text-align: center;
+}
+
+.pf-hero > *:not(.pf-glow) {
+  position: relative;
+  z-index: 1;
+}
+
+.pf-glow {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  width: 300px;
+  height: 230px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(124, 58, 237, 0.42), transparent);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.profile-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pf-verified {
+  color: #4ade80;
+}
+
+.pf-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--primary-soft);
+  font-size: 13px;
+}
+
+.pf-level svg {
+  color: #fbbf24;
+}
+
+.pf-level b {
+  font-weight: 800;
+}
+
+.pf-level span {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pf-xp {
+  width: 190px;
+  height: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--card-border);
+}
+
+.pf-xp span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-bright));
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pf-xp-note {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pf-chip.hot {
+  border-color: rgba(251, 146, 60, 0.4);
+  background: rgba(251, 146, 60, 0.12);
+  color: #fb923c;
+}
+
+/* ---------- Shortcut tiles ---------- */
+.pf-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 0 16px 14px;
+}
+
+.pf-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 14px 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  transition: transform 0.15s;
+}
+
+button.pf-tile:active {
+  transform: scale(0.96);
+}
+
+.pf-tile svg {
+  color: var(--primary-bright);
+}
+
+.pf-tile b {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.pf-tile span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* ---------- Achievements ---------- */
+.ach {
+  margin: 0 0 14px;
+}
+
+.ach-head,
+.pf-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  margin-bottom: 10px;
+}
+
+.ach-head h3,
+.pf-section-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ach-head > span {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ach-rail,
+.pf-rail {
+  display: flex;
+  gap: 10px;
+  padding: 2px 16px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ach-rail::-webkit-scrollbar,
+.pf-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.ach-tile {
+  flex: 0 0 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 8px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  text-align: center;
+  transition: transform 0.15s;
+}
+
+.ach-tile:active {
+  transform: scale(0.96);
+}
+
+.ach-tile b {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ach-tile em {
+  margin-top: 8px;
+  color: var(--primary-bright);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ach-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--text-muted);
+}
+
+.ach-icon i {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  background: var(--card);
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+.ach-tile.done .ach-icon {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #3b2300;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.35);
+}
+
+.ach-tile.done .ach-icon i {
+  background: #22c55e;
+  color: #fff;
+}
+
+.ach-bar {
+  display: block;
+  width: 64px;
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--card-border);
+}
+
+.ach-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary-bright);
+}
+
+/* ---------- Recently watched ---------- */
+.pf-recent {
+  margin-bottom: 14px;
+}
+
+.pf-section-head button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--primary-bright);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pf-poster {
+  flex: 0 0 92px;
+  min-width: 0;
+  color: var(--text);
+  text-align: left;
+  transition: transform 0.15s;
+}
+
+.pf-poster:active {
+  transform: scale(0.96);
+}
+
+.pf-poster img {
+  display: block;
+  width: 92px;
+  height: 138px;
+  object-fit: cover;
+  border-radius: 14px;
+  background: var(--skeleton-a, var(--card));
+}
+
+.pf-poster span {
+  display: block;
+  max-width: 92px;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Account actions ---------- */
+.pf-value {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 16px 20px 0;
+}
+
+.pf-signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 50px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  transition: transform 0.15s;
+}
+
+.pf-signout:active {
+  transform: scale(0.98);
+}
+
+.pf-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
+  margin-top: 10px;
+  padding: 10px 14px;
+  color: var(--danger);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* ---------- Password strength and sign-up text ---------- */
+.pw-meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 4px 14px;
+}
+
+.pw-bars {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.pw-bars span {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--card-border);
+  transition: background 0.2s;
+}
+
+.pw-label {
+  min-width: 62px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pw-meter.s1 .pw-bars .on {
+  background: #ef4444;
+}
+
+.pw-meter.s2 .pw-bars .on {
+  background: #f59e0b;
+}
+
+.pw-meter.s3 .pw-bars .on {
+  background: #84cc16;
+}
+
+.pw-meter.s4 .pw-bars .on {
+  background: #22c55e;
+}
+
+.pw-meter.s1 .pw-label {
+  color: #ef4444;
+}
+
+.pw-meter.s2 .pw-label {
+  color: #f59e0b;
+}
+
+.pw-meter.s3 .pw-label {
+  color: #84cc16;
+}
+
+.pw-meter.s4 .pw-label {
+  color: #22c55e;
+}
+
+.auth-legal {
+  margin: 14px 4px 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.auth-legal button {
+  color: var(--primary-bright);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* ---------- Wide screens ---------- */
+@media (min-width: 700px) {
+  .pf-tiles,
+  .ach,
+  .pf-recent,
+  .page > .st-card {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .pf-tiles {
+    width: calc(100% - 32px);
+  }
+
+  .profile-actions {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .ach-rail {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
